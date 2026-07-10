@@ -247,8 +247,8 @@ function tick() {
   setText(el.label, current.title);
   if (lastSubHidden !== false) { el.sub.hidden = false; lastSubHidden = false; }
   setText(el.sub, reachedGoal
-    ? `+${formatDuration(elapsed - goalMs)}`
-    : formatCountdown(goalMs - elapsed));
+    ? `+${formatElapsed(elapsed - goalMs)}`
+    : formatElapsed(goalMs - elapsed));
   setText(el.detail, reachedGoal
     ? `over · ${activeFast.goalHours}h goal smashed`
     : `left · ${Math.floor((elapsed / goalMs) * 100)}% of ${activeFast.goalHours}h`);
