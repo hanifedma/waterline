@@ -339,11 +339,14 @@ html[data-theme="light"] .gauge__sub,
 html[data-theme="light"] .gauge__detail,
 html[data-theme="light"] .gauge__word { text-shadow: none; }
 
-/* Past ~42% the water has risen behind the text — switch to light ink. */
+/* Past ~42% the water has risen behind the text — switch to light ink.
+   The detail line sits lower, so its own switch (.gauge__detail--deep) is
+   driven by a real measurement of the wave against it, not this threshold. */
 .gauge[data-deep="true"] .gauge__time,
 .gauge[data-deep="true"] .gauge__sub,
 .gauge[data-deep="true"] .gauge__detail,
-.gauge[data-deep="true"] .gauge__word { color: #fff; text-shadow: 0 2px 18px rgba(3, 20, 38, .6); }
+.gauge[data-deep="true"] .gauge__word,
+.gauge__detail--deep { color: #fff; text-shadow: 0 2px 18px rgba(3, 20, 38, .6); }
 .gauge[data-deep="true"] .gauge__label {
   color: rgba(255, 255, 255, .92);
   text-shadow: 0 1px 12px rgba(3, 20, 38, .55);
