@@ -9,7 +9,9 @@ const root = document.documentElement;
 
 const el = {
   gauge: $("gauge"), ring: $("progressRing"), water: $("waterGroup"),
-  label: $("gaugeLabel"), time: $("gaugeTime"), sub: $("gaugeSub"), detail: $("gaugeDetail"),
+  label: $("gaugeLabel"), sub: $("gaugeSub"), detail: $("gaugeDetail"),
+  timeWord: $("gaugeTimeWord"), timeValue: $("gaugeTimeValue"),
+  subValue: $("gaugeSubValue"), subWord: $("gaugeSubWord"),
   goalRow: $("goalRow"), startBtn: $("startBtn"), endBtn: $("endBtn"),
   editStartBtn: $("editStartBtn"), cancelBtn: $("cancelBtn"), startedAt: $("startedAt"),
   coachQuote: $("coachQuote"), coachNext: $("coachNext"),
@@ -216,9 +218,10 @@ function watchGaugeVisibility() {
 
 /*
  * el.sub shows the countdown at the same size as el.time's elapsed clock —
- * time spent and time left get equal billing. It has nothing to show until
- * a fast is running, so it's hidden the rest of the time; guarded so idle
- * ticks (once a second) don't write the same hidden state over and over.
+ * time spent and time left get equal billing. Both carry a small word —
+ * "Underway 02:00:00", "46:00:00 to the top" — that has nothing to show
+ * until a fast is running, so they're hidden the rest of the time; guarded
+ * so idle ticks (once a second) don't write the same hidden state forever.
  */
 let lastSubHidden = null;
 
@@ -226,10 +229,10 @@ function tick() {
   const { activeFast, settings } = store.state;
 
   if (!activeFast) {
-    setText(el.time, "00:00:00");
+    setText(el.timeValue, "00:00:00");
+    if (lastSubHidden !== true) { el.timeWord.hidden = true; el.sub.hidden = true; lastSubHidden = true; }
     setText(el.label, "Ready when you are");
     setText(el.detail, `Goal: ${settings.goalHours}h · tap begin`);
-    if (lastSubHidden !== true) { el.sub.hidden = true; lastSubHidden = true; }
     setText(el.coachNext, "");
     resetGauge();
     markStages(-1);
@@ -243,15 +246,16 @@ function tick() {
   const reachedGoal = elapsed >= goalMs;
   const { index, current, next } = stageAt(elapsed / 3.6e6);
 
-  setText(el.time, formatElapsed(elapsed));
+  setText(el.timeValue, formatElapsed(elapsed));
   setText(el.label, current.title);
-  if (lastSubHidden !== false) { el.sub.hidden = false; lastSubHidden = false; }
-  setText(el.sub, reachedGoal
+  if (lastSubHidden !== false) { el.timeWord.hidden = false; el.sub.hidden = false; lastSubHidden = false; }
+  setText(el.subValue, reachedGoal
     ? `+${formatElapsed(elapsed - goalMs)}`
     : formatElapsed(goalMs - elapsed));
+  setText(el.subWord, reachedGoal ? "overflowing" : "to the top");
   setText(el.detail, reachedGoal
-    ? `over · ${activeFast.goalHours}h goal smashed`
-    : `left · ${Math.floor((elapsed / goalMs) * 100)}% of ${activeFast.goalHours}h`);
+    ? `${activeFast.goalHours}h goal smashed`
+    : `${Math.floor((elapsed / goalMs) * 100)}% of ${activeFast.goalHours}h`);
 
   paintGauge(elapsed, activeFast.goalHours);
   markStages(index);

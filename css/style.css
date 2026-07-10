@@ -324,14 +324,26 @@ main {
   font-size: .82rem; color: var(--text-dim);
   text-shadow: 0 1px 10px rgba(0, 0, 0, .3);
 }
+/* The small word riding beside each big number — "Underway 02:00:00",
+   "46:00:00 to the top" — reads at a human size, not clock size. */
+.gauge__word {
+  font-family: var(--font); font-weight: 500;
+  font-size: clamp(.95rem, 3.4vw, 1.2rem);
+  color: var(--text-dim);
+  vertical-align: middle;
+}
+#gaugeTimeWord { margin-inline-end: .4rem; }
+#gaugeSubWord { margin-inline-start: .4rem; }
 html[data-theme="light"] .gauge__time,
 html[data-theme="light"] .gauge__sub,
-html[data-theme="light"] .gauge__detail { text-shadow: none; }
+html[data-theme="light"] .gauge__detail,
+html[data-theme="light"] .gauge__word { text-shadow: none; }
 
 /* Past ~42% the water has risen behind the text — switch to light ink. */
 .gauge[data-deep="true"] .gauge__time,
 .gauge[data-deep="true"] .gauge__sub,
-.gauge[data-deep="true"] .gauge__detail { color: #fff; text-shadow: 0 2px 18px rgba(3, 20, 38, .6); }
+.gauge[data-deep="true"] .gauge__detail,
+.gauge[data-deep="true"] .gauge__word { color: #fff; text-shadow: 0 2px 18px rgba(3, 20, 38, .6); }
 .gauge[data-deep="true"] .gauge__label {
   color: rgba(255, 255, 255, .92);
   text-shadow: 0 1px 12px rgba(3, 20, 38, .55);
@@ -741,9 +753,11 @@ html[data-lite] .stage[data-state="active"] .stage__hour { box-shadow: none; }
 html[data-lite] .gauge__time,
 html[data-lite] .gauge__sub,
 html[data-lite] .gauge__detail,
+html[data-lite] .gauge__word,
 html[data-lite] .gauge[data-deep="true"] .gauge__time,
 html[data-lite] .gauge[data-deep="true"] .gauge__sub,
 html[data-lite] .gauge[data-deep="true"] .gauge__detail,
+html[data-lite] .gauge[data-deep="true"] .gauge__word,
 html[data-lite] .gauge[data-deep="true"] .gauge__label { text-shadow: none; }
 
 html[data-lite] .stat:hover { transform: none; }
