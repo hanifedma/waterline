@@ -17,12 +17,12 @@
  * grant access. Access is controlled by firestore.rules. Safe to commit.
  */
 export const firebaseConfig = {
-  apiKey:            "YOUR_API_KEY",
-  authDomain:        "YOUR_PROJECT.firebaseapp.com",
-  projectId:         "YOUR_PROJECT_ID",
-  storageBucket:     "YOUR_PROJECT.firebasestorage.app",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId:             "YOUR_APP_ID"
+  apiKey: "AIzaSyDnGyplH_iENKAshzou2NXf8wag9NyshWY",
+  authDomain: "waterline-af54d.firebaseapp.com",
+  projectId: "waterline-af54d",
+  storageBucket: "waterline-af54d.firebasestorage.app",
+  messagingSenderId: "522318543600",
+  appId: "1:522318543600:web:d59e23418ae01cfc16e035"
 };
 
 /** True once the placeholders above have been replaced with real values. */
