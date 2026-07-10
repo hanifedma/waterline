@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lost at sea — Waterline</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="./favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="./css/style.css">
+<style>
+  .lost {
+    min-height: 82dvh; display: grid; place-content: center;
+    justify-items: center; gap: .8rem; text-align: center;
+    width: var(--shell); margin-inline: auto;
+  }
+  .lost__drop { font-size: 3.4rem; animation: bob 2.6s var(--ease) infinite; }
+  .lost h1 { font-size: clamp(1.8rem, 6vw, 2.6rem); }
+  .lost p { color: var(--text-dim); max-width: 42ch; }
+</style>
+</head>
+<body>
+<div class="aurora" aria-hidden="true">
+  <span class="aurora__blob aurora__blob--1"></span>
+  <span class="aurora__blob aurora__blob--2"></span>
+  <span class="aurora__blob aurora__blob--3"></span>
+</div>
+
+<main class="lost">
+  <span class="lost__drop" aria-hidden="true">💧</span>
+  <h1>Lost at sea</h1>
+  <p>That page drifted off. Nothing here but open water.</p>
+  <a class="btn btn--primary btn--lg" href="./">Back to your fast</a>
+</main>
+
+<script>
+  const root = document.documentElement;
+  root.dataset.theme = localStorage.getItem("waterline:theme")
+    ?? (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+  if (localStorage.getItem("waterline:perf") === "lite") root.dataset.lite = "true";
+</script>
+</body>
+</html>

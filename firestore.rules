@@ -1,0 +1,34 @@
+rules_version = '2';
+
+// Waterline — every document lives under the owner's uid, and only that
+// signed-in owner may touch it. Paste this into:
+//   Firebase console → Firestore Database → Rules → Publish
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    // users/{uid} — holds the running fast and your settings
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+
+      // users/{uid}/fasts/{fastId} — one document per completed fast
+      match /fasts/{fastId} {
+        allow read, delete: if isOwner(userId);
+        allow create, update: if isOwner(userId)
+          && request.resource.data.keys().hasOnly(['start', 'end', 'goalHours'])
+          && request.resource.data.start is number
+          && request.resource.data.end is number
+          && request.resource.data.goalHours is number
+          && request.resource.data.end > request.resource.data.start;
+      }
+    }
+
+    // Nothing else in the database is reachable.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

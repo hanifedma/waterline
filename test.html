@@ -1,0 +1,208 @@
+<!doctype html><meta charset="utf-8"><title>Waterline tests</title>
+<meta name="robots" content="noindex">
+<pre id="out">running…</pre>
+<script type="module">
+import { store, computeStats, dayIndex, fastedDays, isValidFast } from "./js/store.js";
+import { stageAt, completionMessage } from "./js/stages.js";
+
+const lines = [];
+let pass = 0, fail = 0;
+const eq = (name, got, want) => {
+  const ok = JSON.stringify(got) === JSON.stringify(want);
+  ok ? pass++ : fail++;
+  lines.push(`${ok ? "PASS" : "FAIL"} ${name}${ok ? "" : `  got=${JSON.stringify(got)} want=${JSON.stringify(want)}`}`);
+};
+
+const H = 3.6e6, DAY = 864e5;
+
+// ── stage boundaries ──────────────────────────────────────────────
+eq("stageAt 0h", stageAt(0).current.title, "Fed state");
+eq("stageAt 3.99h", stageAt(3.99).current.title, "Fed state");
+eq("stageAt 4h", stageAt(4).current.title, "Insulin falling");
+eq("stageAt 15.99h", stageAt(15.99).current.title, "Fat burning");
+eq("stageAt 16h", stageAt(16).current.title, "Ketosis begins");
+eq("stageAt 17.4h next", stageAt(17.4).next.title, "Autophagy rising");
+eq("stageAt 72h index", stageAt(72).index, 9);
+eq("stageAt 500h next is null", stageAt(500).next, null);
+
+// ── stats ─────────────────────────────────────────────────────────
+eq("empty stats", computeStats([]), { streak: 0, longest: 0, total: 0, hours: 0 });
+
+const noon = (daysAgo) => { const d = new Date(); d.setHours(12,0,0,0); return d.getTime() - daysAgo*DAY; };
+const f = (daysAgo, durH) => ({ start: noon(daysAgo) - durH*H, end: noon(daysAgo), goalHours: 16 });
+
+const three = [f(0, 16), f(1, 20), f(2, 14)];
+eq("streak of 3", computeStats(three).streak, 3);
+eq("longest of 3", computeStats(three).longest, 20*H);
+eq("total of 3", computeStats(three).total, 3);
+eq("hours of 3", Math.round(computeStats(three).hours), 50);
+
+eq("streak breaks on gap", computeStats([f(0,16), f(2,16)]).streak, 1);
+eq("streak counts yesterday", computeStats([f(1,16), f(2,16)]).streak, 2);
+eq("streak zero if stale", computeStats([f(5,16), f(6,16)]).streak, 0);
+eq("two fasts same day = 1 day", computeStats([f(0,10), f(0,12), f(1,10)]).streak, 2);
+
+// ── calendar day maths ────────────────────────────────────────────
+const at = (y, mo, d, h = 12) => new Date(y, mo, d, h).getTime();
+
+eq("dayIndex is stable within a day",
+   dayIndex(at(2026, 0, 15, 0)) === dayIndex(at(2026, 0, 15, 23)), true);
+eq("consecutive days differ by 1",
+   dayIndex(at(2026, 0, 16)) - dayIndex(at(2026, 0, 15)), 1);
+eq("month boundary differs by 1",
+   dayIndex(at(2026, 1, 1)) - dayIndex(at(2026, 0, 31)), 1);
+eq("year boundary differs by 1",
+   dayIndex(at(2027, 0, 1)) - dayIndex(at(2026, 11, 31)), 1);
+eq("leap day is a day",
+   dayIndex(at(2028, 1, 29)) - dayIndex(at(2028, 1, 28)), 1);
+
+// US daylight-saving jumps: 2026-03-08 (spring forward, 23h day)
+// and 2026-11-01 (fall back, 25h day). A timestamp subtraction would
+// report 23h/25h and silently break the streak; ordinals must not.
+eq("spring-forward day is 1 apart",
+   dayIndex(at(2026, 2, 9)) - dayIndex(at(2026, 2, 8)), 1);
+eq("fall-back day is 1 apart",
+   dayIndex(at(2026, 10, 2)) - dayIndex(at(2026, 10, 1)), 1);
+
+eq("fastedDays dedupes a day",
+   fastedDays([{ end: at(2026, 0, 5, 3) }, { end: at(2026, 0, 5, 20) }]).size, 1);
+eq("fastedDays keeps distinct days",
+   fastedDays([{ end: at(2026, 0, 5) }, { end: at(2026, 0, 6) }]).size, 2);
+
+// A streak spanning a month boundary must survive.
+const endOfMonth = [
+  { start: at(2026, 0, 31) - 16*H, end: at(2026, 0, 31), goalHours: 16 },
+  { start: at(2026, 1, 1)  - 16*H, end: at(2026, 1, 1),  goalHours: 16 },
+  { start: at(2026, 1, 2)  - 16*H, end: at(2026, 1, 2),  goalHours: 16 }
+];
+eq("three distinct days across a month boundary", fastedDays(endOfMonth).size, 3);
+const idxs = [...fastedDays(endOfMonth)].sort((a,b)=>a-b);
+eq("and they are consecutive", [idxs[1]-idxs[0], idxs[2]-idxs[1]], [1, 1]);
+
+// ── completion copy ───────────────────────────────────────────────
+eq("hit goal", completionMessage(16, 16).startsWith("Goal reached"), true);
+eq("80% short", completionMessage(13, 16).includes("81%"), true);
+
+// ── local store round-trip ────────────────────────────────────────
+localStorage.removeItem("waterline:data:v1");
+const s = store;
+s.state = { activeFast: null, fasts: [], settings: { goalHours: 16 } };
+
+await s.startFast(16);
+eq("startFast sets active", s.state.activeFast.goalHours, 16);
+eq("startFast is not cloud", s.isCloud, false);
+
+await s.startFast(24);
+eq("startFast is a no-op while running", s.state.activeFast.goalHours, 16);
+
+await s.setGoal(20);
+eq("setGoal updates running fast", s.state.activeFast.goalHours, 20);
+eq("setGoal updates settings", s.state.settings.goalHours, 20);
+
+const backdated = Date.now() - 5*H;
+await s.setStart(backdated);
+eq("setStart backdates", s.state.activeFast.start, backdated);
+
+eq("persisted to localStorage", JSON.parse(localStorage.getItem("waterline:data:v1")).activeFast.start, backdated);
+
+const rec = await s.endFast();
+eq("endFast returns record", rec.goalHours, 20);
+eq("endFast clears active", s.state.activeFast, null);
+eq("endFast files history", s.state.fasts.length, 1);
+eq("history duration ~5h", Math.round((s.state.fasts[0].end - s.state.fasts[0].start)/H), 5);
+
+// ── editing a logged fast ─────────────────────────────────────────
+const logged = s.state.fasts[0];
+const newStart = logged.start - 2*H;
+const newEnd = logged.end + 1*H;
+await s.updateFast(logged.id, { start: newStart, end: newEnd });
+eq("updateFast moves start", s.state.fasts[0].start, newStart);
+eq("updateFast moves end", s.state.fasts[0].end, newEnd);
+eq("updateFast keeps goal", s.state.fasts[0].goalHours, 20);
+eq("updateFast keeps id", s.state.fasts[0].id, logged.id);
+eq("updateFast persists", JSON.parse(localStorage.getItem("waterline:data:v1")).fasts[0].end, newEnd);
+eq("updateFast recomputes duration", Math.round((s.state.fasts[0].end - s.state.fasts[0].start)/H), 8);
+
+await s.updateFast(logged.id, { end: newEnd + H });
+eq("updateFast can move end alone", s.state.fasts[0].end, newEnd + H);
+eq("...leaving start intact", s.state.fasts[0].start, newStart);
+
+await s.updateFast("no-such-id", { end: 1 });
+eq("updateFast ignores unknown ids", s.state.fasts.length, 1);
+
+await s.deleteFast(s.state.fasts[0].id);
+eq("deleteFast removes it", s.state.fasts.length, 0);
+
+await s.startFast(16);
+await s.cancelFast();
+eq("cancelFast discards", s.state.activeFast, null);
+eq("cancelFast logs nothing", s.state.fasts.length, 0);
+
+eq("endFast with no fast returns null", await s.endFast(), null);
+
+// ── endFast(endAt) clamps a chosen end time ───────────────────────
+s.state = { activeFast: null, fasts: [], settings: { goalHours: 16 } };
+await s.startFast(16);
+await s.setStart(Date.now() - 10*H);
+const chosen = Date.now() - 3*H;
+const recChosen = await s.endFast(chosen);
+eq("endFast honours a chosen end", recChosen.end, chosen);
+eq("...giving a 7h fast", Math.round((recChosen.end - recChosen.start)/H), 7);
+
+await s.startFast(16);
+await s.setStart(Date.now() - 4*H);
+const recFuture = await s.endFast(Date.now() + 5*H);
+eq("endFast clamps a future end to now", recFuture.end <= Date.now(), true);
+eq("...and not to the future value", recFuture.end < Date.now() + 4*H, true);
+
+await s.startFast(16);
+const st2 = store.state.activeFast.start;
+const recBefore = await s.endFast(st2 - 5*H);
+eq("endFast clamps an end before the start", recBefore.end, st2 + 1);
+eq("...so end always exceeds start", recBefore.end > recBefore.start, true);
+
+await s.startFast(16);
+const recDefault = await s.endFast();
+eq("endFast() with no argument ends now", Math.abs(recDefault.end - Date.now()) < 2000, true);
+
+await s.startFast(16);
+await s.setStart(Date.now() - 2*H);
+const recNaN = await s.endFast(NaN);
+eq("endFast(NaN) falls back to now", Math.abs(recNaN.end - Date.now()) < 2000, true);
+
+s.state = { activeFast: null, fasts: [], settings: { goalHours: 16 } };
+
+// ── corrupt localStorage must not poison the stats ────────────────
+eq("valid fast accepted", isValidFast({start: 1, end: 2, goalHours: 16}), true);
+eq("end before start rejected", isValidFast({start: 5, end: 2, goalHours: 16}), false);
+eq("end equal to start rejected", isValidFast({start: 5, end: 5, goalHours: 16}), false);
+eq("NaN rejected", isValidFast({start: NaN, end: 2, goalHours: 16}), false);
+eq("string timestamps rejected", isValidFast({start: "1", end: "2", goalHours: 16}), false);
+eq("missing goal rejected", isValidFast({start: 1, end: 2}), false);
+eq("null rejected", isValidFast(null), false);
+
+localStorage.setItem("waterline:data:v1", JSON.stringify({
+  activeFast: { start: "nonsense", goalHours: 16 },
+  fasts: [
+    { id: "ok",   start: Date.now()-2*H, end: Date.now()-H, goalHours: 16 },
+    { id: "bad1", start: Date.now(),     end: Date.now()-H, goalHours: 16 },  // ends before it starts
+    { id: "bad2", start: null,           end: Date.now(),   goalHours: 16 },
+    { noId: true, start: 1, end: 2, goalHours: 16 },
+    "garbage", null
+  ],
+  settings: { goalHours: -5 }
+}));
+// force a re-read through the same path the app uses on sign-out
+store._enterLocal();
+eq("corrupt activeFast dropped", store.state.activeFast, null);
+eq("only the valid fast survives", store.state.fasts.length, 1);
+eq("and it is the right one", store.state.fasts[0].id, "ok");
+eq("nonsense goal falls back to default", store.state.settings.goalHours, 16);
+const st = computeStats(store.state.fasts);
+eq("stats are finite", Number.isFinite(st.hours) && Number.isFinite(st.longest), true);
+eq("streak is a number", Number.isFinite(st.streak), true);
+
+localStorage.removeItem("waterline:data:v1");
+document.getElementById("out").textContent =
+  lines.join("\n") + `\n\n${pass} passed, ${fail} failed`;
+</script>

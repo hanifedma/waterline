@@ -1,0 +1,17 @@
+{
+  "name": "Waterline — Water Fasting Tracker",
+  "short_name": "Waterline",
+  "description": "Fill your waterline. A free, real-time water fasting tracker that syncs across your devices.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#050c17",
+  "theme_color": "#050c17",
+  "categories": ["health", "lifestyle", "productivity"],
+  "icons": [
+    { "src": "./icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "./icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
