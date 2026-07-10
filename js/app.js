@@ -476,9 +476,12 @@ function paintControls() {
       ` · ${goalHours}h goal at ${sameDay ? "" : dateFmt.format(goalAt) + " "}${timeFmt.format(goalAt)}`;
   }
 
+  const goalTitle = running ? "Locked — end your fast to change the goal" : "";
   for (const chip of el.goalRow.querySelectorAll(".chip")) {
     const pressed = String(Number(chip.dataset.goal) === goal);
     if (chip.getAttribute("aria-pressed") !== pressed) chip.setAttribute("aria-pressed", pressed);
+    if (chip.disabled !== running) chip.disabled = running;
+    if (chip.title !== goalTitle) chip.title = goalTitle;
   }
 }
 

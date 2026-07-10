@@ -96,8 +96,15 @@ await s.startFast(24);
 eq("startFast is a no-op while running", s.state.activeFast.goalHours, 16);
 
 await s.setGoal(20);
-eq("setGoal updates running fast", s.state.activeFast.goalHours, 20);
-eq("setGoal updates settings", s.state.settings.goalHours, 20);
+eq("setGoal is a no-op while a fast is running", s.state.activeFast.goalHours, 16);
+eq("...settings stay put too", s.state.settings.goalHours, 16);
+
+await s.cancelFast();
+await s.setGoal(20);
+eq("setGoal updates settings once idle", s.state.settings.goalHours, 20);
+
+await s.startFast(20);
+eq("startFast picks up the new goal", s.state.activeFast.goalHours, 20);
 
 const backdated = Date.now() - 5*H;
 await s.setStart(backdated);

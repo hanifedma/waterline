@@ -311,12 +311,10 @@ class Store extends EventTarget {
     await this._writeUser({ activeFast, settings: { goalHours } });
   }
 
+  /** Sets the goal for your *next* fast. A fast already in progress keeps the goal it started with. */
   async setGoal(goalHours) {
-    const patch = { settings: { goalHours } };
-    if (this.state.activeFast) {
-      patch.activeFast = { ...this.state.activeFast, goalHours };
-    }
-    await this._writeUser(patch);
+    if (this.state.activeFast) return;
+    await this._writeUser({ settings: { goalHours } });
   }
 
   async setStart(startMs) {

@@ -359,6 +359,10 @@ html[data-theme="light"] .gauge__detail { text-shadow: none; }
   background: var(--accent-soft); color: var(--accent);
   border-color: color-mix(in srgb, var(--accent) 50%, transparent);
 }
+.chip:disabled {
+  cursor: not-allowed; pointer-events: none;
+  opacity: .6; filter: saturate(.6);
+}
 
 .hero__buttons { display: flex; flex-wrap: wrap; justify-content: center; gap: .6rem; }
 .hero__started { font-size: .82rem; color: var(--text-faint); font-variant-numeric: tabular-nums; }
