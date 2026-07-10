@@ -165,24 +165,6 @@ html[data-theme="light"] .aurora__blob { opacity: .16; }
 
 .topbar__actions { display: flex; align-items: center; gap: .55rem; }
 
-.sync-pill {
-  display: inline-flex; align-items: center; gap: .45rem;
-  padding: .34rem .7rem .34rem .6rem;
-  font-size: .74rem; font-weight: 500;
-  color: var(--text-dim);
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: 999px;
-  transition: color .3s, border-color .3s;
-}
-.sync-pill__dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-faint); }
-.sync-pill[data-state="live"] { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 35%, transparent); }
-.sync-pill[data-state="live"] .sync-pill__dot { background: var(--accent); animation: breathe 2.4s var(--ease) infinite; }
-.sync-pill[data-state="offline"] { color: var(--gold); }
-.sync-pill[data-state="offline"] .sync-pill__dot { background: var(--gold); }
-
-/* Opacity, not box-shadow: shadow pulses repaint a growing area every frame. */
-@keyframes breathe { 50% { opacity: .3; } }
-
 /* ── Buttons ────────────────────────────────────────────────────── */
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: .55rem;
@@ -329,23 +311,27 @@ main {
   color: var(--accent);
   transition: color .4s;
 }
-.gauge__time {
+/* The countdown (.gauge__sub) mirrors the elapsed clock's size exactly —
+   time running and time remaining deserve equal billing. */
+.gauge__time, .gauge__sub {
   font-family: var(--mono); font-weight: 300;
   font-size: clamp(2.5rem, 11vw, 3.6rem);
   letter-spacing: -.02em; line-height: 1.05;
   font-variant-numeric: tabular-nums;
   text-shadow: 0 2px 22px rgba(0, 0, 0, .35);
 }
-.gauge__sub {
+.gauge__detail {
   font-size: .82rem; color: var(--text-dim);
   text-shadow: 0 1px 10px rgba(0, 0, 0, .3);
 }
 html[data-theme="light"] .gauge__time,
-html[data-theme="light"] .gauge__sub { text-shadow: none; }
+html[data-theme="light"] .gauge__sub,
+html[data-theme="light"] .gauge__detail { text-shadow: none; }
 
 /* Past ~42% the water has risen behind the text — switch to light ink. */
 .gauge[data-deep="true"] .gauge__time,
-.gauge[data-deep="true"] .gauge__sub { color: #fff; text-shadow: 0 2px 18px rgba(3, 20, 38, .6); }
+.gauge[data-deep="true"] .gauge__sub,
+.gauge[data-deep="true"] .gauge__detail { color: #fff; text-shadow: 0 2px 18px rgba(3, 20, 38, .6); }
 .gauge[data-deep="true"] .gauge__label {
   color: rgba(255, 255, 255, .92);
   text-shadow: 0 1px 12px rgba(3, 20, 38, .55);
@@ -734,7 +720,6 @@ html[data-lite] .aurora__blob { display: none; }
 
 html[data-lite] .wave,
 html[data-lite] .celebrate__ring,
-html[data-lite] .sync-pill__dot,
 html[data-lite] .gauge,
 html[data-lite] .entry { animation: none !important; }
 
@@ -751,8 +736,10 @@ html[data-lite] .stage[data-state="active"] .stage__hour { box-shadow: none; }
 
 html[data-lite] .gauge__time,
 html[data-lite] .gauge__sub,
+html[data-lite] .gauge__detail,
 html[data-lite] .gauge[data-deep="true"] .gauge__time,
 html[data-lite] .gauge[data-deep="true"] .gauge__sub,
+html[data-lite] .gauge[data-deep="true"] .gauge__detail,
 html[data-lite] .gauge[data-deep="true"] .gauge__label { text-shadow: none; }
 
 html[data-lite] .stat:hover { transform: none; }
@@ -763,8 +750,7 @@ html[data-lite] .toast, html[data-lite] .menu, html[data-lite] .modal[open] { an
 
 /* Compositor animations keep burning cycles in a hidden tab. Stop them. */
 html[data-hidden] .wave,
-html[data-hidden] .aurora__blob,
-html[data-hidden] .sync-pill__dot { animation-play-state: paused; }
+html[data-hidden] .aurora__blob { animation-play-state: paused; }
 
 /*
  * The waves only need to move while a fast is running and the bowl is on
@@ -793,7 +779,6 @@ html[data-hidden] .sync-pill__dot { animation-play-state: paused; }
   .topbar__actions { gap: .4rem; }
   .brand__mark { width: 26px; height: 26px; }
   .brand__name { font-size: 1.02rem; }
-  .sync-pill { padding: .3rem .6rem .3rem .5rem; font-size: .7rem; gap: .38rem; }
   .icon-btn { width: 34px; height: 34px; }
   .icon-btn svg { width: 15px; height: 15px; }
   .btn--google { padding: .48rem .8rem; font-size: .82rem; gap: .4rem; }

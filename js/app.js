@@ -9,7 +9,7 @@ const root = document.documentElement;
 
 const el = {
   gauge: $("gauge"), ring: $("progressRing"), water: $("waterGroup"),
-  label: $("gaugeLabel"), time: $("gaugeTime"), sub: $("gaugeSub"),
+  label: $("gaugeLabel"), time: $("gaugeTime"), sub: $("gaugeSub"), detail: $("gaugeDetail"),
   goalRow: $("goalRow"), startBtn: $("startBtn"), endBtn: $("endBtn"),
   editStartBtn: $("editStartBtn"), cancelBtn: $("cancelBtn"), startedAt: $("startedAt"),
   coachQuote: $("coachQuote"), coachNext: $("coachNext"),
@@ -18,7 +18,7 @@ const el = {
   stages: $("stages"), history: $("history"), historyHint: $("historyHint"),
   calDow: $("calDow"), calGrid: $("calGrid"), calMonth: $("calMonth"),
   calHint: $("calHint"), calPrev: $("calPrev"), calNext: $("calNext"),
-  syncPill: $("syncPill"), themeBtn: $("themeBtn"), signInBtn: $("signInBtn"),
+  themeBtn: $("themeBtn"), signInBtn: $("signInBtn"),
   avatarMenu: $("avatarMenu"), avatarBtn: $("avatarBtn"), avatarImg: $("avatarImg"),
   userMenu: $("userMenu"), menuName: $("menuName"), menuEmail: $("menuEmail"),
   signOutBtn: $("signOutBtn"), buildMode: $("buildMode"), perfBtn: $("perfBtn"),
@@ -214,13 +214,22 @@ function watchGaugeVisibility() {
 
 /* ── The one-second loop ──────────────────────────────────────────── */
 
+/*
+ * el.sub shows the countdown at the same size as el.time's elapsed clock —
+ * time spent and time left get equal billing. It has nothing to show until
+ * a fast is running, so it's hidden the rest of the time; guarded so idle
+ * ticks (once a second) don't write the same hidden state over and over.
+ */
+let lastSubHidden = null;
+
 function tick() {
   const { activeFast, settings } = store.state;
 
   if (!activeFast) {
     setText(el.time, "00:00:00");
     setText(el.label, "Ready when you are");
-    setText(el.sub, `Goal: ${settings.goalHours}h · tap begin`);
+    setText(el.detail, `Goal: ${settings.goalHours}h · tap begin`);
+    if (lastSubHidden !== true) { el.sub.hidden = true; lastSubHidden = true; }
     setText(el.coachNext, "");
     resetGauge();
     markStages(-1);
@@ -236,9 +245,13 @@ function tick() {
 
   setText(el.time, formatElapsed(elapsed));
   setText(el.label, current.title);
+  if (lastSubHidden !== false) { el.sub.hidden = false; lastSubHidden = false; }
   setText(el.sub, reachedGoal
-    ? `Goal smashed · +${formatDuration(elapsed - goalMs)} over`
-    : `${formatCountdown(goalMs - elapsed)} left · ${Math.floor((elapsed / goalMs) * 100)}% of ${activeFast.goalHours}h`);
+    ? `+${formatDuration(elapsed - goalMs)}`
+    : formatCountdown(goalMs - elapsed));
+  setText(el.detail, reachedGoal
+    ? `over · ${activeFast.goalHours}h goal smashed`
+    : `left · ${Math.floor((elapsed / goalMs) * 100)}% of ${activeFast.goalHours}h`);
 
   paintGauge(elapsed, activeFast.goalHours);
   markStages(index);
@@ -780,16 +793,6 @@ function wireAuth() {
 
   store.addEventListener("merged", ({ detail: count }) => {
     toast(`Moved ${count} local ${count === 1 ? "record" : "records"} into your account.`, { icon: "☁️", win: true, duration: 6000 });
-  });
-
-  store.addEventListener("status", ({ detail }) => {
-    el.syncPill.dataset.state = detail.state;
-    el.syncPill.querySelector(".sync-pill__text").textContent = detail.text;
-    el.syncPill.title = {
-      live: "Changes sync to your other devices instantly",
-      offline: "Offline — changes are queued and will sync",
-      local: "Saved on this device only"
-    }[detail.state];
   });
 }
 

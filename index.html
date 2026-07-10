@@ -116,11 +116,6 @@
   </a>
 
   <div class="topbar__actions">
-    <span class="sync-pill" id="syncPill" title="Sync status">
-      <span class="sync-pill__dot"></span>
-      <span class="sync-pill__text">Local</span>
-    </span>
-
     <button class="icon-btn" id="themeBtn" type="button" aria-label="Toggle colour theme">
       <svg viewBox="0 0 24 24" class="icon-sun" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.6M12 19.4V22M4.2 4.2l1.9 1.9M17.9 17.9l1.9 1.9M2 12h2.6M19.4 12H22M4.2 19.8l1.9-1.9M17.9 6.1l1.9-1.9"/></svg>
       <svg viewBox="0 0 24 24" class="icon-moon" aria-hidden="true"><path d="M20 14.2A8.2 8.2 0 0 1 9.8 4a8.4 8.4 0 1 0 10.2 10.2Z"/></svg>
@@ -188,7 +183,8 @@
       <div class="gauge__face">
         <p class="gauge__label" id="gaugeLabel">Ready when you are</p>
         <p class="gauge__time" id="gaugeTime">00:00:00</p>
-        <p class="gauge__sub" id="gaugeSub">Tap begin to start your fast</p>
+        <p class="gauge__sub" id="gaugeSub" hidden>0h 00m</p>
+        <p class="gauge__detail" id="gaugeDetail">Tap begin to start your fast</p>
       </div>
     </div>
 
