@@ -129,7 +129,7 @@ function notify(title, body) {
  * second, and each write restarts an 800ms transition on a drop-shadowed
  * stroke — a permanent repaint loop for a change nobody can see.
  */
-let lastOffset = null, lastWaterY = null, lastDeep = null, lastComplete = null, lastDetailDeep = null;
+let lastOffset = null, lastWaterY = null, lastDeep = null, lastComplete = null;
 
 function paintGauge(elapsedMs, goalHours) {
   const goalMs = goalHours * 3.6e6;
@@ -159,20 +159,6 @@ function paintGauge(elapsedMs, goalHours) {
     el.gauge.dataset.deep = String(deep);
     lastDeep = deep;
   }
-
-  /*
-   * The small "X% of Yh" caption sits at the bottom of the centred text
-   * block, right where even a shallow fill's wave crest reaches — the flat
-   * DEEP_AT threshold above is tuned for the big centred digits and leaves
-   * this line unreadable at low progress (dim text over bright water).
-   * Measured directly instead of guessed, since the crest's real screen
-   * position depends on responsive font sizes the threshold can't see.
-   */
-  const detailDeep = el.water.getBoundingClientRect().top <= el.detail.getBoundingClientRect().bottom;
-  if (detailDeep !== lastDetailDeep) {
-    el.detail.classList.toggle("gauge__detail--deep", detailDeep);
-    lastDetailDeep = detailDeep;
-  }
 }
 
 /** Idle, this runs once a second — so it must not write unless something moved. */
@@ -195,10 +181,6 @@ function resetGauge() {
   if (lastDeep !== false) {
     el.gauge.dataset.deep = "false";
     lastDeep = false;
-  }
-  if (lastDetailDeep !== false) {
-    el.detail.classList.remove("gauge__detail--deep");
-    lastDetailDeep = false;
   }
 }
 

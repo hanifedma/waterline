@@ -41,6 +41,7 @@ html[data-theme="dark"] {
   --water-bottom:  #1668c7;
   --shadow:        0 24px 60px -24px rgba(0, 0, 0, .85);
   --bowl:          rgba(255, 255, 255, .035);
+  --gauge-ink:     #ffffff;
 }
 
 html[data-theme="light"] {
@@ -60,6 +61,7 @@ html[data-theme="light"] {
   --accent-soft:   rgba(15, 180, 154, .12);
   --shadow:        0 20px 48px -22px rgba(15, 55, 92, .35);
   --bowl:          rgba(11, 45, 76, .04);
+  --gauge-ink:     #000000;
 }
 
 /* ── Reset ──────────────────────────────────────────────────────── */
@@ -311,6 +313,10 @@ main {
   color: var(--accent);
   transition: color .4s;
 }
+/* Everything inside the bowl is plain ink — white on dark, black on light —
+   whatever the water is doing behind it. */
+.gauge__time, .gauge__sub, .gauge__detail, .gauge__word { color: var(--gauge-ink); }
+
 /* The countdown (.gauge__sub) mirrors the elapsed clock's size exactly —
    time running and time remaining deserve equal billing. */
 .gauge__time, .gauge__sub {
@@ -321,7 +327,7 @@ main {
   text-shadow: 0 2px 22px rgba(0, 0, 0, .35);
 }
 .gauge__detail {
-  font-size: .82rem; color: var(--text-dim);
+  font-size: .82rem;
   text-shadow: 0 1px 10px rgba(0, 0, 0, .3);
 }
 /* The small word riding beside each big number — "Underway 02:00:00",
@@ -329,7 +335,6 @@ main {
 .gauge__word {
   font-family: var(--font); font-weight: 500;
   font-size: clamp(.95rem, 3.4vw, 1.2rem);
-  color: var(--text-dim);
   vertical-align: middle;
 }
 #gaugeTimeWord { margin-inline-end: .4rem; }
@@ -339,14 +344,8 @@ html[data-theme="light"] .gauge__sub,
 html[data-theme="light"] .gauge__detail,
 html[data-theme="light"] .gauge__word { text-shadow: none; }
 
-/* Past ~42% the water has risen behind the text — switch to light ink.
-   The detail line sits lower, so its own switch (.gauge__detail--deep) is
-   driven by a real measurement of the wave against it, not this threshold. */
-.gauge[data-deep="true"] .gauge__time,
-.gauge[data-deep="true"] .gauge__sub,
-.gauge[data-deep="true"] .gauge__detail,
-.gauge[data-deep="true"] .gauge__word,
-.gauge__detail--deep { color: #fff; text-shadow: 0 2px 18px rgba(3, 20, 38, .6); }
+/* The stage title keeps its accent colour, so it still needs to lift off the
+   water once the fill has risen behind it. */
 .gauge[data-deep="true"] .gauge__label {
   color: rgba(255, 255, 255, .92);
   text-shadow: 0 1px 12px rgba(3, 20, 38, .55);
@@ -757,10 +756,6 @@ html[data-lite] .gauge__time,
 html[data-lite] .gauge__sub,
 html[data-lite] .gauge__detail,
 html[data-lite] .gauge__word,
-html[data-lite] .gauge[data-deep="true"] .gauge__time,
-html[data-lite] .gauge[data-deep="true"] .gauge__sub,
-html[data-lite] .gauge[data-deep="true"] .gauge__detail,
-html[data-lite] .gauge[data-deep="true"] .gauge__word,
 html[data-lite] .gauge[data-deep="true"] .gauge__label { text-shadow: none; }
 
 html[data-lite] .stat:hover { transform: none; }
