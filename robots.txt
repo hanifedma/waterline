@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://example.github.io/waterline/sitemap.xml
+Sitemap: https://hanifedma.com/waterline/sitemap.xml

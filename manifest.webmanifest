@@ -2,6 +2,8 @@
   "name": "Waterline — Water Fasting Tracker",
   "short_name": "Waterline",
   "description": "Fill your waterline. A free, real-time water fasting tracker that syncs across your devices.",
+  "lang": "en",
+  "dir": "ltr",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

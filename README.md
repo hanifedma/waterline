@@ -28,6 +28,8 @@ consecutive days together.
 - **Works offline.** Installable PWA. Offline changes queue and flush when you reconnect.
 - **Zero build.** Plain ES modules. The folder *is* the website.
 - **Dark and light.** Follows your system, remembers your choice.
+- **English and Korean.** One tap in the header swaps the interface; your own data — times,
+  durations, dates — always stays in your device's own locale.
 - **Light on slow connections and weak hardware.** See below.
 
 ## Built to run anywhere
@@ -143,15 +145,16 @@ start time, then clears the guest store.
 
 ```
 index.html            app shell, SEO tags, JSON-LD
-404.html              themed not-found page
+404.html              themed, bilingual not-found page
 css/style.css         design tokens, dark + light themes
 js/config.js          ← your Firebase keys go here
 js/store.js           local + Firestore backends behind one interface
-js/stages.js          metabolic timeline, encouragement copy
+js/stages.js          metabolic timeline, encouragement copy (English, canonical)
+js/i18n.js            interface translations (English + Korean) and the language switch
 js/app.js             rendering, timer loop, streak calendar, milestone celebrations
 sw.js                 offline shell cache
 firestore.rules       owner-only access — publish this
-test.html             open it in a browser; 75 assertions, no dependencies
+test.html             open it in a browser; 77 assertions, no dependencies
 ```
 
 ## Health note

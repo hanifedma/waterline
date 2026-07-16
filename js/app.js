@@ -2,7 +2,11 @@
  * Waterline — UI controller.
  */
 import { store, computeStats, dayIndex, fastedDays } from "./store.js";
-import { STAGES, stageAt, quoteOfTheHour, completionMessage } from "./stages.js";
+import { STAGES, stageAt, QUOTES, completionMessage } from "./stages.js";
+import {
+  t, getLang, setLang, applyStatic,
+  localizedStage, localizedQuote, localizedCompletion
+} from "./i18n.js";
 
 const $ = (id) => document.getElementById(id);
 const root = document.documentElement;
@@ -24,7 +28,7 @@ const el = {
   avatarMenu: $("avatarMenu"), avatarBtn: $("avatarBtn"), avatarImg: $("avatarImg"),
   userMenu: $("userMenu"), menuName: $("menuName"), menuEmail: $("menuEmail"),
   signOutBtn: $("signOutBtn"), buildMode: $("buildMode"), perfBtn: $("perfBtn"),
-  toasts: $("toasts"),
+  toasts: $("toasts"), langBtn: $("langBtn"), langLabel: $("langLabel"),
   editModal: $("editModal"), editForm: $("editForm"), startInput: $("startInput"),
   endInput: $("endInput"), endField: $("endField"), editTitle: $("editTitle"),
   editHint: $("editHint"), editError: $("editError"), cancelEditBtn: $("cancelEditBtn"),
@@ -231,8 +235,8 @@ function tick() {
   if (!activeFast) {
     setText(el.timeValue, "00:00:00");
     if (lastSubHidden !== true) { el.timeWord.hidden = true; el.sub.hidden = true; lastSubHidden = true; }
-    setText(el.label, "Ready when you are");
-    setText(el.detail, `Goal: ${settings.goalHours}h · tap begin`);
+    setText(el.label, t("gauge.ready"));
+    setText(el.detail, t("gauge.readyDetail", { goal: settings.goalHours }));
     setText(el.coachNext, "");
     resetGauge();
     markStages(-1);
@@ -245,17 +249,18 @@ function tick() {
   const goalMs = activeFast.goalHours * 3.6e6;
   const reachedGoal = elapsed >= goalMs;
   const { index, current, next } = stageAt(elapsed / 3.6e6);
+  const stage = localizedStage(current);
 
   setText(el.timeValue, formatElapsed(elapsed));
-  setText(el.label, current.title);
+  setText(el.label, stage.title);
   if (lastSubHidden !== false) { el.timeWord.hidden = false; el.sub.hidden = false; lastSubHidden = false; }
   setText(el.subValue, reachedGoal
     ? `+${formatElapsed(elapsed - goalMs)}`
     : formatElapsed(goalMs - elapsed));
-  setText(el.subWord, reachedGoal ? "overflowing" : "to the top");
+  setText(el.subWord, reachedGoal ? t("gauge.overflowing") : t("gauge.toTop"));
   setText(el.detail, reachedGoal
-    ? `${activeFast.goalHours}h goal smashed`
-    : `${Math.floor((elapsed / goalMs) * 100)}% of ${activeFast.goalHours}h`);
+    ? t("gauge.goalSmashed", { goal: activeFast.goalHours })
+    : t("gauge.pctOfGoal", { pct: Math.floor((elapsed / goalMs) * 100), goal: activeFast.goalHours }));
 
   paintGauge(elapsed, activeFast.goalHours);
   markStages(index);
@@ -263,8 +268,8 @@ function tick() {
   syncWaves();
 
   setText(el.coachNext, next
-    ? `${formatCountdown(next.hour * 3.6e6 - elapsed)} until ${next.title}`
-    : "You are past every milestone on the map.");
+    ? t("coach.until", { time: formatCountdown(next.hour * 3.6e6 - elapsed), stage: localizedStage(next).title })
+    : t("coach.pastAll"));
 
   if (!primed) {
     lastStageIndex = index;
@@ -274,15 +279,15 @@ function tick() {
   }
 
   if (index > lastStageIndex) {
-    toast(current.cheer, { icon: current.icon, win: true, duration: 8000 });
-    notify(`${current.icon} ${current.title}`, current.cheer);
+    toast(stage.cheer, { icon: stage.icon, win: true, duration: 8000 });
+    notify(`${stage.icon} ${stage.title}`, stage.cheer);
     lastStageIndex = index;
   }
 
   if (reachedGoal && !goalCelebrated) {
     goalCelebrated = true;
-    toast(`${activeFast.goalHours}h goal reached. Anything now is a bonus.`, { icon: "🏆", win: true, duration: 7000 });
-    notify("Goal reached 🏆", `You hit your ${activeFast.goalHours}-hour goal.`);
+    toast(t("toast.goalReached", { goal: activeFast.goalHours }), { icon: "🏆", win: true, duration: 7000 });
+    notify(t("notify.goalTitle"), t("notify.goalBody", { goal: activeFast.goalHours }));
   }
 }
 
@@ -290,7 +295,8 @@ function tick() {
 
 /** Built once at boot; the timer only flips each row's `data-state` after that. */
 function buildStages() {
-  el.stages.replaceChildren(...STAGES.map((stage) => {
+  el.stages.replaceChildren(...STAGES.map((raw) => {
+    const stage = localizedStage(raw);
     const li = document.createElement("li");
     li.className = "stage";
     li.dataset.state = "todo";
@@ -388,7 +394,7 @@ function paintCalendar(fasts) {
       (idx === todayIdx ? " day--today" : "") +
       (idx > todayIdx ? " day--future" : "");
     day.textContent = date;
-    day.title = hit ? `Fasted on ${dayNameFmt.format(stamp)}` : dayNameFmt.format(stamp);
+    day.title = hit ? t("cal.fastedOn", { date: dayNameFmt.format(stamp) }) : dayNameFmt.format(stamp);
 
     cell.append(day);
     cells.push(cell);
@@ -397,13 +403,13 @@ function paintCalendar(fasts) {
   el.calGrid.replaceChildren(...cells);
 
   if (!fasts.length) {
-    el.calHint.textContent = "No fasts logged yet";
+    el.calHint.textContent = t("cal.emptyHint");
     return;
   }
   const { streak } = computeStats(fasts);
-  const label = monthShortFmt.format(calCursor);
-  el.calHint.textContent =
-    `${streak}-day streak · ${monthHits} day${monthHits === 1 ? "" : "s"} in ${label}`;
+  el.calHint.textContent = t("cal.summary", {
+    streak, days: monthHits, month: monthShortFmt.format(calCursor)
+  });
 }
 
 function paintStats(fasts) {
@@ -416,14 +422,16 @@ function paintStats(fasts) {
 
 function paintHistory(fasts) {
   if (!fasts.length) {
-    el.historyHint.textContent = "Nothing logged yet";
-    el.history.innerHTML =
-      `<p class="empty"><span class="empty__drop" aria-hidden="true">💧</span><br>
-       Your first fast will appear here. Start the clock whenever you're ready.</p>`;
+    el.historyHint.textContent = t("history.emptyHint");
+    const empty = document.createElement("p");
+    empty.className = "empty";
+    empty.innerHTML = `<span class="empty__drop" aria-hidden="true">💧</span><br>`;
+    empty.append(t("history.empty"));
+    el.history.replaceChildren(empty);
     return;
   }
 
-  el.historyHint.textContent = `${fasts.length} fast${fasts.length === 1 ? "" : "s"} logged`;
+  el.historyHint.textContent = t("history.count", { n: fasts.length });
   const sorted = [...fasts].sort((a, b) => b.start - a.start);
 
   el.history.replaceChildren(...sorted.map((fast) => {
@@ -440,22 +448,28 @@ function paintHistory(fasts) {
         <span class="entry__when"></span>
       </div>
       <span class="entry__goal"></span>
-      <button class="entry__act" type="button" data-act="edit" aria-label="Edit this fast">${PENCIL_ICON}</button>
-      <button class="entry__act" type="button" data-act="delete" aria-label="Delete this fast">${TRASH_ICON}</button>`;
+      <button class="entry__act" type="button" data-act="edit"></button>
+      <button class="entry__act" type="button" data-act="delete"></button>`;
 
     row.querySelector(".entry__dur").textContent = formatDuration(duration);
     row.querySelector(".entry__when").textContent =
       `${dateFmt.format(fast.start)}, ${timeFmt.format(fast.start)} → ${timeFmt.format(fast.end)}`;
-    row.querySelector(".entry__goal").textContent = `${fast.goalHours}h goal`;
+    row.querySelector(".entry__goal").textContent = t("history.goalTag", { goal: fast.goalHours });
 
-    row.querySelector('[data-act="edit"]').addEventListener("click", () => {
+    const editBtn = row.querySelector('[data-act="edit"]');
+    editBtn.innerHTML = PENCIL_ICON;
+    editBtn.setAttribute("aria-label", t("entry.editAria"));
+    editBtn.addEventListener("click", () => {
       openEditor({ kind: "fast", id: fast.id, start: fast.start, end: fast.end });
     });
 
-    row.querySelector('[data-act="delete"]').addEventListener("click", async () => {
-      if (!confirm("Delete this fast? This can't be undone.")) return;
+    const delBtn = row.querySelector('[data-act="delete"]');
+    delBtn.innerHTML = TRASH_ICON;
+    delBtn.setAttribute("aria-label", t("entry.deleteAria"));
+    delBtn.addEventListener("click", async () => {
+      if (!confirm(t("entry.deleteConfirm"))) return;
       await store.deleteFast(fast.id);
-      toast("Fast deleted", { icon: "🗑️", duration: 2600 });
+      toast(t("toast.deleted"), { icon: "🗑️", duration: 2600 });
     });
     return row;
   }));
@@ -475,12 +489,14 @@ function paintControls() {
     const { start, goalHours } = store.state.activeFast;
     const goalAt = start + goalHours * 3.6e6;
     const sameDay = dayIndex(goalAt) === dayIndex(start);
-    el.startedAt.textContent =
-      `Started ${dateFmt.format(start)} at ${timeFmt.format(start)}` +
-      ` · ${goalHours}h goal at ${sameDay ? "" : dateFmt.format(goalAt) + " "}${timeFmt.format(goalAt)}`;
+    el.startedAt.textContent = t("controls.startedAt", {
+      start: `${dateFmt.format(start)} ${timeFmt.format(start)}`,
+      goal: goalHours,
+      goalAt: `${sameDay ? "" : dateFmt.format(goalAt) + " "}${timeFmt.format(goalAt)}`
+    });
   }
 
-  const goalTitle = running ? "Locked — end your fast to change the goal" : "";
+  const goalTitle = running ? t("controls.goalLocked") : "";
   for (const chip of el.goalRow.querySelectorAll(".chip")) {
     const pressed = String(Number(chip.dataset.goal) === goal);
     if (chip.getAttribute("aria-pressed") !== pressed) chip.setAttribute("aria-pressed", pressed);
@@ -522,21 +538,9 @@ function render() {
 let editTarget = null;
 
 const EDITOR_MODES = {
-  active: {
-    title: "When did you actually start?",
-    hint: "Forgot to hit begin? Set the real time your fast started.",
-    start: true, end: false, save: "Save"
-  },
-  end: {
-    title: "When did you break your fast?",
-    hint: "Defaults to right now. Back-date it if you ate earlier.",
-    start: false, end: true, save: "End fast"
-  },
-  fast: {
-    title: "Edit this fast",
-    hint: "Adjust when this fast started and when you broke it.",
-    start: true, end: true, save: "Save"
-  }
+  active: { titleKey: "editor.activeTitle", hintKey: "editor.activeHint", saveKey: "editor.save",    start: true,  end: false },
+  end:    { titleKey: "editor.endTitle",    hintKey: "editor.endHint",    saveKey: "editor.saveEnd", start: false, end: true },
+  fast:   { titleKey: "editor.fastTitle",   hintKey: "editor.fastHint",   saveKey: "editor.save",    start: true,  end: true }
 };
 
 /** A hidden input that is still `required` blocks submit and can't be focused. */
@@ -557,9 +561,9 @@ function openEditor(target) {
   editTarget = target;
   const nowValue = toLocalInput(Date.now());
 
-  el.editTitle.textContent = mode.title;
-  el.editHint.textContent = mode.hint;
-  el.saveEditBtn.textContent = mode.save;
+  el.editTitle.textContent = t(mode.titleKey);
+  el.editHint.textContent = t(mode.hintKey);
+  el.saveEditBtn.textContent = t(mode.saveKey);
 
   // Only the fields a mode actually shows have a value; an "end" target has no
   // `start` of its own, and formatting `undefined` as a date throws.
@@ -589,9 +593,9 @@ const parseField = (input) => new Date(input.value).getTime();
 function celebrate(record) {
   const duration = record.end - record.start;
   const hours = duration / 3.6e6;
-  el.doneTitle.textContent = hours >= record.goalHours ? "Goal reached" : "Fast logged";
+  el.doneTitle.textContent = hours >= record.goalHours ? t("done.goalReached") : t("done.fastLogged");
   el.doneTime.textContent = formatDuration(duration);
-  el.doneMsg.textContent = completionMessage(hours, record.goalHours);
+  el.doneMsg.textContent = localizedCompletion(hours, record.goalHours, completionMessage);
   el.doneModal.showModal();
 }
 
@@ -612,10 +616,10 @@ async function applyEdit() {
   if (target.kind === "active") {
     await store.setStart(start);
     unprime(); // a backdated start must not fire a burst of skipped milestones
-    toast("Start time updated", { icon: "🕰️", duration: 2600 });
+    toast(t("toast.startUpdated"), { icon: "🕰️", duration: 2600 });
   } else {
     await store.updateFast(target.id, { start, end: parseField(el.endInput) });
-    toast("Fast updated", { icon: "🕰️", duration: 2600 });
+    toast(t("toast.fastUpdated"), { icon: "🕰️", duration: 2600 });
   }
 }
 
@@ -626,26 +630,26 @@ function validateEditor() {
 
   if (editTarget.kind === "end") {
     const active = store.state.activeFast;
-    if (!active) return "This fast is no longer running.";
+    if (!active) return t("valid.noLongerRunning");
     const end = parseField(el.endInput);
-    if (Number.isNaN(end)) return "Pick an end time.";
-    if (end > now) return "A fast can't end in the future.";
-    if (end < active.start) return "You can't end a fast before it started.";
+    if (Number.isNaN(end)) return t("valid.pickEnd");
+    if (end > now) return t("valid.endFuture");
+    if (end < active.start) return t("valid.endBeforeStart");
     return null;
   }
 
   const start = parseField(el.startInput);
-  if (Number.isNaN(start)) return "Pick a start time.";
-  if (start > now) return "A fast can't start in the future.";
+  if (Number.isNaN(start)) return t("valid.pickStart");
+  if (start > now) return t("valid.startFuture");
 
   if (editTarget.kind === "active") {
-    return now - start > 30 * 86_400_000 ? "That's more than 30 days ago." : null;
+    return now - start > 30 * 86_400_000 ? t("valid.tooOld") : null;
   }
 
   const end = parseField(el.endInput);
-  if (Number.isNaN(end)) return "Pick an end time.";
-  if (end > now) return "A fast can't end in the future.";
-  if (end <= start) return "The end has to come after the start.";
+  if (Number.isNaN(end)) return t("valid.pickEnd");
+  if (end > now) return t("valid.endFuture");
+  if (end <= start) return t("valid.endAfterStart");
   return null;
 }
 
@@ -660,7 +664,7 @@ function wireControls() {
   el.startBtn.addEventListener("click", async () => {
     unprime();
     await store.startFast(store.state.settings.goalHours);
-    toast("Fast started. One hour at a time.", { icon: "🌊", win: true });
+    toast(t("toast.started"), { icon: "🌊", win: true });
 
     if ("Notification" in window && Notification.permission === "default") {
       Notification.requestPermission().catch(() => {});
@@ -672,10 +676,10 @@ function wireControls() {
   });
 
   el.cancelBtn.addEventListener("click", async () => {
-    if (!confirm("Discard this fast without logging it?")) return;
+    if (!confirm(t("toast.discardConfirm"))) return;
     await store.cancelFast();
     unprime();
-    toast("Fast discarded", { icon: "↩️", duration: 2600 });
+    toast(t("toast.discarded"), { icon: "↩️", duration: 2600 });
   });
 
   el.doneCloseBtn.addEventListener("click", () => el.doneModal.close());
@@ -724,32 +728,67 @@ function wireTheme() {
   });
 }
 
+/** Reflects the current lite state onto the footer toggle; re-run on language change. */
+function syncPerfBtn() {
+  const lite = root.dataset.lite === "true";
+  el.perfBtn.setAttribute("aria-pressed", String(lite));
+  el.perfBtn.textContent = lite ? t("perf.reduced") : t("perf.reduce");
+  el.perfBtn.title = lite ? t("perf.reducedTitle") : t("perf.reduceTitle");
+}
+
 /** Lite mode is chosen before first paint by the inline boot script. */
 function wirePerf() {
-  const sync = () => {
-    const lite = root.dataset.lite === "true";
-    el.perfBtn.setAttribute("aria-pressed", String(lite));
-    el.perfBtn.textContent = lite ? "Motion reduced" : "Reduce motion";
-    el.perfBtn.title = lite
-      ? "Blur, ambient motion and glows are off. Click to restore them."
-      : "Turn off blur, ambient motion and glows to save battery and CPU.";
-  };
-
   el.perfBtn.addEventListener("click", () => {
     const lite = root.dataset.lite === "true";
     if (lite) delete root.dataset.lite;
     else root.dataset.lite = "true";
     localStorage.setItem("waterline:perf", lite ? "full" : "lite");
-    sync();
+    syncPerfBtn();
   });
 
-  sync();
+  syncPerfBtn();
+}
+
+/* ── Language ─────────────────────────────────────────────────────── */
+
+let currentUser = null;
+
+/** Footer status line — depends on both the signed-in user and the language. */
+function updateBuildMode() {
+  if (currentUser) {
+    el.buildMode.textContent = t("status.syncingAs", { name: currentUser.displayName ?? currentUser.email });
+  } else {
+    el.buildMode.textContent = store.canSignIn ? t("status.localSignin") : t("status.local");
+  }
+}
+
+function syncLangBtn() {
+  el.langLabel.textContent = getLang() === "ko" ? "한" : "EN";
+}
+
+/** Re-render everything that carries translated text. */
+function applyLanguage() {
+  applyStatic(document);
+  syncLangBtn();
+  syncPerfBtn();
+  updateBuildMode();
+  el.coachQuote.textContent = localizedQuote(QUOTES);
+  buildStages();
+  lastFastsKey = null;   // force the data-driven lists to repaint in the new language
+  render();
+}
+
+function wireLang() {
+  el.langBtn.addEventListener("click", () => {
+    setLang(getLang() === "ko" ? "en" : "ko");
+    applyLanguage();
+  });
 }
 
 function wireAuth() {
   el.signInBtn.addEventListener("click", async () => {
     if (!store.canSignIn) {
-      toast("Add your Firebase keys in js/config.js to enable sync.", { icon: "🔑", duration: 7000 });
+      toast(t("toast.needKeys"), { icon: "🔑", duration: 7000 });
       return;
     }
     try {
@@ -757,9 +796,7 @@ function wireAuth() {
     } catch (err) {
       console.error(err);
       toast(
-        err.message === "sdk-unavailable"
-          ? "Can't reach Firebase. You're offline — local mode still works."
-          : "Sign-in failed. Check your Firebase authorised domains.",
+        err.message === "sdk-unavailable" ? t("toast.offlineSignin") : t("toast.signinFailed"),
         { icon: "⚠️", duration: 7000 }
       );
     }
@@ -781,10 +818,11 @@ function wireAuth() {
   el.signOutBtn.addEventListener("click", async () => {
     el.userMenu.hidden = true;
     await store.signOut();
-    toast("Signed out. Back to local mode.", { icon: "👋" });
+    toast(t("toast.signedOut"), { icon: "👋" });
   });
 
   store.addEventListener("auth", ({ detail: user }) => {
+    currentUser = user;
     el.signInBtn.hidden = Boolean(user);
     el.avatarMenu.hidden = !user;
     if (user) {
@@ -792,27 +830,29 @@ function wireAuth() {
       el.avatarImg.alt = user.displayName ?? "Your account";
       el.menuName.textContent = user.displayName ?? "Signed in";
       el.menuEmail.textContent = user.email ?? "";
-      el.buildMode.textContent = `Syncing live as ${user.displayName ?? user.email}`;
-    } else {
-      el.buildMode.textContent = store.canSignIn ? "Local mode — sign in to sync" : "Local mode";
     }
+    updateBuildMode();
   });
 
   store.addEventListener("merged", ({ detail: count }) => {
-    toast(`Moved ${count} local ${count === 1 ? "record" : "records"} into your account.`, { icon: "☁️", win: true, duration: 6000 });
+    toast(t("toast.merged", { count }), { icon: "☁️", win: true, duration: 6000 });
   });
 }
 
 /* ── Boot ─────────────────────────────────────────────────────────── */
 
-el.coachQuote.textContent = quoteOfTheHour();
+applyStatic(document);      // swap the static HTML into the chosen language before first paint
+syncLangBtn();
+el.coachQuote.textContent = localizedQuote(QUOTES);
 resetGauge();
 buildStages();
 buildCalendar();
 wireTheme();
+wireLang();
 wirePerf();
 wireControls();
 wireAuth();
+updateBuildMode();
 
 watchGaugeVisibility();
 store.subscribe(render);

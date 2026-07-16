@@ -6,7 +6,7 @@
  * in the background. Firebase's own traffic is never touched — Firestore has
  * its own offline persistence and caching its API would corrupt sync.
  */
-const VERSION = "waterline-v27";
+const VERSION = "waterline-v28";
 const SHELL = [
   "./",
   "./index.html",
@@ -14,6 +14,7 @@ const SHELL = [
   "./js/app.js",
   "./js/store.js",
   "./js/stages.js",
+  "./js/i18n.js",
   "./js/config.js",
   "./manifest.webmanifest",
   "./favicon.svg",

@@ -2,20 +2,26 @@
 <html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Lost at sea — Waterline</title>
 <meta name="robots" content="noindex">
+<meta name="theme-color" content="#050c17" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f2f7fb" media="(prefers-color-scheme: light)">
+<meta name="color-scheme" content="dark light">
+<link rel="icon" href="./favicon.ico" sizes="any">
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="./css/style.css">
 <style>
   .lost {
     min-height: 82dvh; display: grid; place-content: center;
-    justify-items: center; gap: .8rem; text-align: center;
+    justify-items: center; gap: .85rem; text-align: center;
     width: var(--shell); margin-inline: auto;
   }
-  .lost__drop { font-size: 3.4rem; animation: bob 2.6s var(--ease) infinite; }
+  .lost__drop { font-size: 3.6rem; animation: bob 2.6s var(--ease) infinite; }
+  html[data-lite] .lost__drop { animation: none; }
   .lost h1 { font-size: clamp(1.8rem, 6vw, 2.6rem); }
   .lost p { color: var(--text-dim); max-width: 42ch; }
+  .lost .btn { margin-top: .4rem; }
 </style>
 </head>
 <body>
@@ -27,16 +33,29 @@
 
 <main class="lost">
   <span class="lost__drop" aria-hidden="true">💧</span>
-  <h1>Lost at sea</h1>
-  <p>That page drifted off. Nothing here but open water.</p>
-  <a class="btn btn--primary btn--lg" href="./">Back to your fast</a>
+  <h1 id="t">Lost at sea</h1>
+  <p id="p">That page drifted off. There's nothing here but open water.</p>
+  <a class="btn btn--primary btn--lg" href="./" id="b">Back to your fast</a>
 </main>
 
 <script>
+  // Match the app's theme, performance and language choices — no modules here.
   const root = document.documentElement;
   root.dataset.theme = localStorage.getItem("waterline:theme")
-    ?? (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+    || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
   if (localStorage.getItem("waterline:perf") === "lite") root.dataset.lite = "true";
+
+  const saved = localStorage.getItem("waterline:lang");
+  const lang = (saved === "en" || saved === "ko") ? saved
+    : ((navigator.language || "").toLowerCase().startsWith("ko") ? "ko" : "en");
+  root.lang = lang;
+
+  if (lang === "ko") {
+    document.title = "망망대해 — Waterline";
+    document.getElementById("t").textContent = "길을 잃었어요";
+    document.getElementById("p").textContent = "그 페이지는 어디론가 흘러가 버렸습니다. 여기엔 넓은 바다뿐이에요.";
+    document.getElementById("b").textContent = "단식으로 돌아가기";
+  }
 </script>
 </body>
 </html>

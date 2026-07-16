@@ -11,21 +11,29 @@
 <meta name="theme-color" content="#050c17" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#f2f7fb" media="(prefers-color-scheme: light)">
 <meta name="color-scheme" content="dark light">
-<link rel="canonical" href="https://example.github.io/waterline/">
+<meta name="application-name" content="Waterline">
+<meta name="apple-mobile-web-app-title" content="Waterline">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="format-detection" content="telephone=no">
+<link rel="canonical" href="https://hanifedma.com/waterline/">
 
 <!-- Open Graph / social -->
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Waterline">
 <meta property="og:title" content="Waterline — Water Fasting Tracker">
 <meta property="og:description" content="Fill your waterline. A free, real-time water fasting tracker that syncs between every device you own.">
-<meta property="og:url" content="https://example.github.io/waterline/">
-<meta property="og:image" content="https://example.github.io/waterline/icons/og-image.png">
+<meta property="og:url" content="https://hanifedma.com/waterline/">
+<meta property="og:image" content="https://hanifedma.com/waterline/icons/og-image.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
+<meta property="og:locale" content="en">
+<meta property="og:locale:alternate" content="ko">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Waterline — Water Fasting Tracker">
 <meta name="twitter:description" content="Fill your waterline. A free, real-time water fasting tracker.">
-<meta name="twitter:image" content="https://example.github.io/waterline/icons/og-image.png">
+<meta name="twitter:image" content="https://hanifedma.com/waterline/icons/og-image.png">
 
 <!-- Icons / PWA -->
 <link rel="icon" href="./favicon.ico" sizes="any">
@@ -39,6 +47,7 @@
 <link rel="modulepreload" href="./js/app.js">
 <link rel="modulepreload" href="./js/store.js">
 <link rel="modulepreload" href="./js/stages.js">
+<link rel="modulepreload" href="./js/i18n.js">
 <link rel="modulepreload" href="./js/config.js">
 <script type="module" src="./js/app.js"></script>
 
@@ -69,6 +78,10 @@
   root.dataset.theme = localStorage.getItem("waterline:theme")
     || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
 
+  const savedLang = localStorage.getItem("waterline:lang");
+  root.lang = (savedLang === "en" || savedLang === "ko") ? savedLang
+    : ((navigator.language || "").toLowerCase().startsWith("ko") ? "ko" : "en");
+
   const choice = localStorage.getItem("waterline:perf");
   if (choice ? choice === "lite" : lowPower) root.dataset.lite = "true";
 })();
@@ -79,7 +92,8 @@
   "@context": "https://schema.org",
   "@type": "WebApplication",
   "name": "Waterline",
-  "url": "https://example.github.io/waterline/",
+  "url": "https://hanifedma.com/waterline/",
+  "inLanguage": ["en", "ko"],
   "applicationCategory": "HealthApplication",
   "operatingSystem": "Any",
   "description": "A free, real-time water fasting tracker with Google sign-in, cross-device sync and an hour-by-hour guide to what happens in your body.",
@@ -107,7 +121,7 @@
 
 <!-- ── Header ──────────────────────────────────────────────────────── -->
 <header class="topbar">
-  <a class="brand" href="./" aria-label="Waterline home">
+  <a class="brand" href="./" data-i18n-aria="a11y.home">
     <svg class="brand__mark" viewBox="0 0 32 32" aria-hidden="true">
       <path d="M16 2.5c5.4 6.2 9.2 11 9.2 15.6A9.2 9.2 0 0 1 16 27.3a9.2 9.2 0 0 1-9.2-9.2C6.8 13.5 10.6 8.7 16 2.5Z"/>
       <path class="brand__line" d="M7.3 18.6c2.2 0 2.2 1.7 4.4 1.7s2.2-1.7 4.3-1.7c2.2 0 2.2 1.7 4.4 1.7s2.2-1.7 4.3-1.7"/>
@@ -116,7 +130,12 @@
   </a>
 
   <div class="topbar__actions">
-    <button class="icon-btn" id="themeBtn" type="button" aria-label="Toggle colour theme">
+    <button class="icon-btn icon-btn--lang" id="langBtn" type="button" data-i18n-aria="a11y.lang">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.4 3.8 5.6 3.8 9S14.5 18.6 12 21c-2.5-2.4-3.8-5.6-3.8-9S9.5 5.4 12 3Z"/></svg>
+      <span id="langLabel">EN</span>
+    </button>
+
+    <button class="icon-btn" id="themeBtn" type="button" data-i18n-aria="a11y.theme">
       <svg viewBox="0 0 24 24" class="icon-sun" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.6M12 19.4V22M4.2 4.2l1.9 1.9M17.9 17.9l1.9 1.9M2 12h2.6M19.4 12H22M4.2 19.8l1.9-1.9M17.9 6.1l1.9-1.9"/></svg>
       <svg viewBox="0 0 24 24" class="icon-moon" aria-hidden="true"><path d="M20 14.2A8.2 8.2 0 0 1 9.8 4a8.4 8.4 0 1 0 10.2 10.2Z"/></svg>
     </button>
@@ -128,7 +147,7 @@
         <path fill="#FBBC05" d="M5.1 14.3a7.4 7.4 0 0 1 0-4.6l-4-3.1a12 12 0 0 0 0 10.8l4-3.1Z"/>
         <path fill="#EA4335" d="M12 4.7c2.3 0 3.8.9 4.7 1.8l3.4-3.3A11.5 11.5 0 0 0 12 0 12 12 0 0 0 1.1 6.6l4 3.1c1-2.9 3.7-5 6.9-5Z"/>
       </svg>
-      <span>Sign in</span>
+      <span data-i18n="nav.signIn">Sign in</span>
     </button>
 
     <div class="avatar-menu" id="avatarMenu" hidden>
@@ -140,7 +159,7 @@
           <strong id="menuName">—</strong>
           <span id="menuEmail">—</span>
         </div>
-        <button class="menu__item" id="signOutBtn" type="button" role="menuitem">Sign out</button>
+        <button class="menu__item" id="signOutBtn" type="button" role="menuitem" data-i18n="nav.signOut">Sign out</button>
       </div>
     </div>
   </div>
@@ -183,7 +202,7 @@
       <div class="gauge__face">
         <p class="gauge__label" id="gaugeLabel">Ready when you are</p>
         <p class="gauge__time" id="gaugeTime">
-          <span class="gauge__word" id="gaugeTimeWord" hidden>Underway</span>
+          <span class="gauge__word" id="gaugeTimeWord" data-i18n="gauge.underway" hidden>Underway</span>
           <span id="gaugeTimeValue">00:00:00</span>
         </p>
         <p class="gauge__sub" id="gaugeSub" hidden>
@@ -196,7 +215,7 @@
 
     <div class="hero__controls">
       <div class="goal-row" id="goalRow">
-        <span class="goal-row__label">Goal</span>
+        <span class="goal-row__label" data-i18n="goal.label">Goal</span>
         <div class="chips" role="group" aria-label="Fasting goal in hours">
           <button class="chip" type="button" data-goal="13">13h</button>
           <button class="chip" type="button" data-goal="16">16h</button>
@@ -210,10 +229,10 @@
       </div>
 
       <div class="hero__buttons">
-        <button class="btn btn--primary btn--lg" id="startBtn" type="button">Begin fast</button>
-        <button class="btn btn--primary btn--lg" id="endBtn" type="button" hidden>End fast</button>
-        <button class="btn btn--ghost" id="editStartBtn" type="button" hidden>Edit start</button>
-        <button class="btn btn--ghost btn--danger" id="cancelBtn" type="button" hidden>Discard</button>
+        <button class="btn btn--primary btn--lg" id="startBtn" type="button" data-i18n="btn.begin">Begin fast</button>
+        <button class="btn btn--primary btn--lg" id="endBtn" type="button" data-i18n="btn.end" hidden>End fast</button>
+        <button class="btn btn--ghost" id="editStartBtn" type="button" data-i18n="btn.editStart" hidden>Edit start</button>
+        <button class="btn btn--ghost btn--danger" id="cancelBtn" type="button" data-i18n="btn.discard" hidden>Discard</button>
       </div>
 
       <p class="hero__started" id="startedAt" hidden></p>
@@ -231,22 +250,22 @@
     <article class="stat">
       <span class="stat__icon" aria-hidden="true">🔥</span>
       <span class="stat__value" id="statStreak">0</span>
-      <span class="stat__key">Day streak</span>
+      <span class="stat__key" data-i18n="stats.streak">Day streak</span>
     </article>
     <article class="stat">
       <span class="stat__icon" aria-hidden="true">🏆</span>
       <span class="stat__value" id="statLongest">0h</span>
-      <span class="stat__key">Longest fast</span>
+      <span class="stat__key" data-i18n="stats.longest">Longest fast</span>
     </article>
     <article class="stat">
       <span class="stat__icon" aria-hidden="true">✅</span>
       <span class="stat__value" id="statTotal">0</span>
-      <span class="stat__key">Fasts completed</span>
+      <span class="stat__key" data-i18n="stats.total">Fasts completed</span>
     </article>
     <article class="stat">
       <span class="stat__icon" aria-hidden="true">⏳</span>
       <span class="stat__value" id="statHours">0h</span>
-      <span class="stat__key">Hours fasted</span>
+      <span class="stat__key" data-i18n="stats.hours">Hours fasted</span>
     </article>
   </section>
 
@@ -254,15 +273,15 @@
   <section class="panel" aria-labelledby="calHeading">
     <div class="panel__head panel__head--split">
       <div>
-        <h2 id="calHeading">Streak calendar</h2>
-        <p class="panel__hint" id="calHint">No fasts logged yet</p>
+        <h2 id="calHeading" data-i18n="cal.heading">Streak calendar</h2>
+        <p class="panel__hint" id="calHint" data-i18n="cal.emptyHint">No fasts logged yet</p>
       </div>
       <div class="cal__nav">
-        <button class="icon-btn" id="calPrev" type="button" aria-label="Previous month">
+        <button class="icon-btn" id="calPrev" type="button" data-i18n-aria="a11y.prevMonth">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5.5 8.5 12l6.5 6.5"/></svg>
         </button>
         <span class="cal__month" id="calMonth">—</span>
-        <button class="icon-btn" id="calNext" type="button" aria-label="Next month">
+        <button class="icon-btn" id="calNext" type="button" data-i18n-aria="a11y.nextMonth">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5.5 15.5 12 9 18.5"/></svg>
         </button>
       </div>
@@ -277,8 +296,8 @@
   <!-- ── Stage timeline ────────────────────────────────────────────── -->
   <section class="panel" aria-labelledby="stagesHeading">
     <div class="panel__head">
-      <h2 id="stagesHeading">What's happening inside you</h2>
-      <p class="panel__hint">The metabolic timeline of a water fast</p>
+      <h2 id="stagesHeading" data-i18n="stages.heading">What's happening inside you</h2>
+      <p class="panel__hint" data-i18n="stages.subhead">The metabolic timeline of a water fast</p>
     </div>
     <ol class="stages" id="stages"></ol>
   </section>
@@ -286,25 +305,26 @@
   <!-- ── History ───────────────────────────────────────────────────── -->
   <section class="panel" aria-labelledby="historyHeading">
     <div class="panel__head">
-      <h2 id="historyHeading">Your fasts</h2>
-      <p class="panel__hint" id="historyHint">Nothing logged yet</p>
+      <h2 id="historyHeading" data-i18n="history.heading">Your fasts</h2>
+      <p class="panel__hint" id="historyHint" data-i18n="history.emptyHint">Nothing logged yet</p>
     </div>
     <div class="history" id="history"></div>
   </section>
 
   <!-- ── Safety ────────────────────────────────────────────────────── -->
   <p class="disclaimer">
-    <strong>Health note.</strong> Waterline is an informational tool, not medical advice. Extended water fasting
+    <strong data-i18n="disclaimer.title">Health note.</strong>
+    <span data-i18n="disclaimer.body">Waterline is an informational tool, not medical advice. Extended water fasting
     can be dangerous if you are pregnant or breastfeeding, underweight, diabetic, on medication, or have a history
     of disordered eating. Talk to a doctor before fasts longer than 24 hours, and stop immediately if you feel faint,
-    confused, or unwell.
+    confused, or unwell.</span>
   </p>
 </main>
 
 <footer class="footer">
-  <p>Waterline · Fill your waterline.</p>
+  <p data-i18n="footer.tagline">Waterline · Fill your waterline.</p>
   <p class="footer__meta">
-    <span id="buildMode">Local mode</span>
+    <span id="buildMode" data-i18n="status.local">Local mode</span>
     <span aria-hidden="true">·</span>
     <button class="footer__toggle" id="perfBtn" type="button" aria-pressed="false">Reduce motion</button>
   </p>
@@ -319,17 +339,17 @@
     <h2 id="editTitle">When did you actually start?</h2>
     <p class="modal__hint" id="editHint">Forgot to hit begin? Set the real time your fast started.</p>
     <label class="field" id="startField">
-      <span>Start time</span>
+      <span data-i18n="modal.startTime">Start time</span>
       <input type="datetime-local" id="startInput" required>
     </label>
     <label class="field" id="endField" hidden>
-      <span>End time</span>
+      <span data-i18n="modal.endTime">End time</span>
       <input type="datetime-local" id="endInput">
     </label>
     <p class="modal__error" id="editError" role="alert" hidden></p>
     <div class="modal__actions">
       <!-- Cancel is type=button so that Enter in a field submits Save, not Cancel. -->
-      <button class="btn btn--ghost" type="button" id="cancelEditBtn">Cancel</button>
+      <button class="btn btn--ghost" type="button" id="cancelEditBtn" data-i18n="modal.cancel">Cancel</button>
       <button class="btn btn--primary" type="submit" id="saveEditBtn">Save</button>
     </div>
   </form>
@@ -343,7 +363,7 @@
     <p class="done__time" id="doneTime">—</p>
     <p class="modal__hint" id="doneMsg">—</p>
     <div class="modal__actions modal__actions--center">
-      <button class="btn btn--primary" id="doneCloseBtn" type="button">Nice</button>
+      <button class="btn btn--primary" id="doneCloseBtn" type="button" data-i18n="done.close">Nice</button>
     </div>
   </div>
 </dialog>
