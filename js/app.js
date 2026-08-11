@@ -12,13 +12,13 @@ const $ = (id) => document.getElementById(id);
 const root = document.documentElement;
 
 const el = {
-  gauge: $("gauge"), ring: $("progressRing"), water: $("waterGroup"),
-  label: $("gaugeLabel"), sub: $("gaugeSub"), detail: $("gaugeDetail"),
-  timeWord: $("gaugeTimeWord"), timeValue: $("gaugeTimeValue"),
-  subValue: $("gaugeSubValue"), subWord: $("gaugeSubWord"),
-  goalRow: $("goalRow"), startBtn: $("startBtn"), endBtn: $("endBtn"),
-  editStartBtn: $("editStartBtn"), cancelBtn: $("cancelBtn"), startedAt: $("startedAt"),
-  coachQuote: $("coachQuote"), coachNext: $("coachNext"),
+  ring: $("ring"), ringFill: $("ringFill"),
+  ringLabel: $("ringLabel"), ringTime: $("ringTime"), ringMeta: $("ringMeta"),
+  coach: $("coach"),
+  goalRow: $("goalRow"), goalSelect: $("goalSelect"),
+  startBtn: $("startBtn"), endBtn: $("endBtn"),
+  timerFoot: $("timerFoot"), startedAt: $("startedAt"),
+  editStartBtn: $("editStartBtn"), cancelBtn: $("cancelBtn"),
   statStreak: $("statStreak"), statLongest: $("statLongest"),
   statTotal: $("statTotal"), statHours: $("statHours"),
   stages: $("stages"), history: $("history"), historyHint: $("historyHint"),
@@ -26,9 +26,10 @@ const el = {
   calHint: $("calHint"), calPrev: $("calPrev"), calNext: $("calNext"),
   themeBtn: $("themeBtn"), signInBtn: $("signInBtn"),
   avatarMenu: $("avatarMenu"), avatarBtn: $("avatarBtn"), avatarImg: $("avatarImg"),
-  userMenu: $("userMenu"), menuName: $("menuName"), menuEmail: $("menuEmail"),
-  signOutBtn: $("signOutBtn"), buildMode: $("buildMode"), perfBtn: $("perfBtn"),
-  toasts: $("toasts"), langBtn: $("langBtn"), langLabel: $("langLabel"),
+  chipName: $("chipName"), userMenu: $("userMenu"),
+  menuName: $("menuName"), menuEmail: $("menuEmail"), signOutBtn: $("signOutBtn"),
+  buildMode: $("buildMode"), toasts: $("toasts"),
+  langBtn: $("langBtn"), langLabel: $("langLabel"),
   editModal: $("editModal"), editForm: $("editForm"), startInput: $("startInput"),
   endInput: $("endInput"), endField: $("endField"), editTitle: $("editTitle"),
   editHint: $("editHint"), editError: $("editError"), cancelEditBtn: $("cancelEditBtn"),
@@ -37,9 +38,28 @@ const el = {
   doneMsg: $("doneMsg"), doneCloseBtn: $("doneCloseBtn")
 };
 
-const RING_CIRCUMFERENCE = 2 * Math.PI * 139;
-const BOWL_TOP = 22, BOWL_HEIGHT = 256, WAVE_CREST = 14;
-const DEEP_AT = 0.42; // water has risen behind the centred text
+/** Must match r on .ring__fill in the stylesheet. */
+const RING_R = 104;
+const RING_C = 2 * Math.PI * RING_R;
+
+/**
+ * The ring is an encouragement curve, not a ruler.
+ *
+ * Real progress is linear and, early on, invisible: twenty minutes into a
+ * 16-hour fast is 2% — a sliver that reads as "you have done nothing". So the
+ * *ring* is eased by p^0.55, which front-loads the fill (2% real → 12% drawn,
+ * 50% → 68%), then slows as you approach the goal. It still starts at empty
+ * and lands exactly on full at the goal, so it never disagrees with itself.
+ *
+ * Nothing numeric is eased: the clock, the time remaining, the logged
+ * duration and every statistic are the real values. Set this to 1 for a
+ * linear ring.
+ */
+const RING_CURVE = 0.55;
+const easeProgress = (p) => Math.pow(p, RING_CURVE);
+
+/** Goals offered in the picker, in hours. */
+const GOAL_CHOICES = [12, 13, 14, 16, 18, 20, 24, 36, 48, 72];
 
 const TRASH_ICON = `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor"
   stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M9.5 7V5h5v2M6.5 7l1 12h9l1-12"/></svg>`;
@@ -69,14 +89,20 @@ function formatElapsed(ms) {
   return `${pad(Math.floor(total / 3600))}:${pad(Math.floor(total / 60) % 60)}:${pad(total % 60)}`;
 }
 
-/** "16h 04m" — the human-readable form used in history and stats. */
+/**
+ * "16h 04m" — the human-readable form used in history and stats.
+ *
+ * Floored, never rounded: rounding would print "16h 00m" for a fast of
+ * 15h 59m 40s and then not award the 16h goal beside it.
+ */
 function formatDuration(ms) {
-  const mins = Math.max(0, Math.round(ms / 60000));
+  const mins = Math.max(0, Math.floor(ms / 60000));
   const h = Math.floor(mins / 60);
   const m = mins % 60;
   return h ? `${h}h ${pad(m)}m` : `${m}m`;
 }
 
+/** Time still to come, rounded up so it only hits "0m" when it really is up. */
 function formatCountdown(ms) {
   const mins = Math.max(0, Math.ceil(ms / 60000));
   const h = Math.floor(mins / 60);
@@ -87,8 +113,14 @@ function formatCountdown(ms) {
 const dateFmt = new Intl.DateTimeFormat(undefined, { weekday: "short", day: "numeric", month: "short" });
 const timeFmt = new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" });
 
+const MINUTE = 60_000;
+
+/** `datetime-local` works in whole minutes, so its bounds must too. */
 const toLocalInput = (ms) =>
   new Date(ms - new Date(ms).getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+
+/** Rounded up to the next whole minute — a lower bound must not fall below `ms`. */
+const toLocalInputCeil = (ms) => toLocalInput(Math.ceil(ms / MINUTE) * MINUTE);
 
 /**
  * Writing an identical string still invalidates layout, and assigning
@@ -107,14 +139,15 @@ function setText(node, text) {
 function toast(message, { icon = "💧", win = false, duration = 5200 } = {}) {
   const node = document.createElement("div");
   node.className = `toast${win ? " toast--win" : ""}`;
-  node.innerHTML = `<span class="toast__icon" aria-hidden="true">${icon}</span><span></span>`;
+  node.innerHTML = `<span class="toast__icon" aria-hidden="true"></span><span></span>`;
+  node.firstElementChild.textContent = icon;
   node.lastElementChild.textContent = message;
   el.toasts.append(node);
 
   setTimeout(() => {
     node.dataset.out = "true";
     node.addEventListener("animationend", () => node.remove(), { once: true });
-    setTimeout(() => node.remove(), 400); // lite mode collapses the animation
+    setTimeout(() => node.remove(), 400); // reduced-motion collapses the animation
   }, duration);
 }
 
@@ -125,151 +158,66 @@ function notify(title, body) {
   } catch { /* some browsers need a service worker registration; the toast still fired */ }
 }
 
-/* ── Gauge ────────────────────────────────────────────────────────── */
+/* ── The ring ─────────────────────────────────────────────────────── */
 
 /*
- * The ring and the water level are written only when they visibly move.
- * Left unguarded, a 16-hour fast nudges stroke-dashoffset by 0.015px every
- * second, and each write restarts an 800ms transition on a drop-shadowed
- * stroke — a permanent repaint loop for a change nobody can see.
+ * Written only when it visibly moves. Left unguarded, a 16-hour fast nudges
+ * stroke-dashoffset by a fraction of a pixel every second, and each write
+ * restarts a 700ms transition — a permanent repaint loop for a change nobody
+ * can see.
  */
-let lastOffset = null, lastWaterY = null, lastDeep = null, lastComplete = null;
+let lastOffset = null, lastComplete = null;
 
-function paintGauge(elapsedMs, goalHours) {
-  const goalMs = goalHours * 3.6e6;
-  const raw = goalMs > 0 ? elapsedMs / goalMs : 0;
-  const progress = Math.min(1, Math.max(0, raw));
+/** Pinned from JS so the dash pattern can never drift from RING_R. */
+el.ringFill.style.strokeDasharray = RING_C;
 
-  const offset = RING_CIRCUMFERENCE * (1 - progress);
+function paintRing(progress, complete) {
+  const offset = RING_C * (1 - easeProgress(progress));
   if (lastOffset === null || Math.abs(offset - lastOffset) >= 0.5) {
-    el.ring.style.strokeDashoffset = offset;
+    el.ringFill.style.strokeDashoffset = offset;
     lastOffset = offset;
   }
-
-  const waterY = BOWL_TOP + BOWL_HEIGHT - WAVE_CREST - progress * BOWL_HEIGHT;
-  if (lastWaterY === null || Math.abs(waterY - lastWaterY) >= 0.25) {
-    el.water.style.transform = `translateY(${waterY}px)`;
-    lastWaterY = waterY;
-  }
-
-  const complete = raw >= 1;
   if (complete !== lastComplete) {
-    el.gauge.dataset.complete = String(complete);
+    el.ring.dataset.complete = String(complete);
     lastComplete = complete;
   }
-
-  const deep = progress > DEEP_AT;
-  if (deep !== lastDeep) {
-    el.gauge.dataset.deep = String(deep);
-    lastDeep = deep;
-  }
-}
-
-/** Idle, this runs once a second — so it must not write unless something moved. */
-function resetGauge() {
-  const offset = RING_CIRCUMFERENCE;
-  const waterY = BOWL_TOP + BOWL_HEIGHT - WAVE_CREST;
-
-  if (lastOffset !== offset) {
-    el.ring.style.strokeDashoffset = offset;
-    lastOffset = offset;
-  }
-  if (lastWaterY !== waterY) {
-    el.water.style.transform = `translateY(${waterY}px)`;
-    lastWaterY = waterY;
-  }
-  if (lastComplete !== false) {
-    el.gauge.dataset.complete = "false";
-    lastComplete = false;
-  }
-  if (lastDeep !== false) {
-    el.gauge.dataset.deep = "false";
-    lastDeep = false;
-  }
-}
-
-/*
- * The wave animation is the page's only permanent repaint. It is worth running
- * only while a fast is on and the bowl is actually on screen.
- *
- * Visibility is measured from the tick rather than trusted to the observer:
- * an IntersectionObserver that misses its "back on screen" callback would
- * leave the water frozen in plain sight. The observer stays for instant
- * response while scrolling; the rect read is the one that must be right, and
- * it only runs while a fast is active.
- */
-let gaugeOnScreen = true;
-
-function measureGaugeVisibility() {
-  const rect = el.gauge.getBoundingClientRect();
-  gaugeOnScreen = rect.bottom > 0 && rect.top < window.innerHeight;
-}
-
-function syncWaves() {
-  const still = String(!store.state.activeFast || !gaugeOnScreen);
-  if (el.gauge.dataset.still !== still) el.gauge.dataset.still = still;
-}
-
-function watchGaugeVisibility() {
-  if (!("IntersectionObserver" in window)) return;
-  new IntersectionObserver(([entry]) => {
-    gaugeOnScreen = entry.isIntersecting;
-    syncWaves();
-  }).observe(el.gauge);
 }
 
 /* ── The one-second loop ──────────────────────────────────────────── */
-
-/*
- * el.sub shows the countdown at the same size as el.time's elapsed clock —
- * time spent and time left get equal billing. Both carry a small word —
- * "Underway 02:00:00", "46:00:00 to the top" — that has nothing to show
- * until a fast is running, so they're hidden the rest of the time; guarded
- * so idle ticks (once a second) don't write the same hidden state forever.
- */
-let lastSubHidden = null;
 
 function tick() {
   const { activeFast, settings } = store.state;
 
   if (!activeFast) {
-    setText(el.timeValue, "00:00:00");
-    if (lastSubHidden !== true) { el.timeWord.hidden = true; el.sub.hidden = true; lastSubHidden = true; }
-    setText(el.label, t("gauge.ready"));
-    setText(el.detail, t("gauge.readyDetail", { goal: settings.goalHours }));
-    setText(el.coachNext, "");
-    resetGauge();
+    setText(el.ringLabel, t("ring.ready"));
+    setText(el.ringTime, "00:00:00");
+    setText(el.ringMeta, t("ring.readyMeta", { goal: settings.goalHours }));
+    setText(el.coach, idleQuote);
+    paintRing(0, false);
     markStages(-1);
-    syncWaves();
     unprime();
     return;
   }
 
   const elapsed = Date.now() - activeFast.start;
   const goalMs = activeFast.goalHours * 3.6e6;
-  const reachedGoal = elapsed >= goalMs;
+  const progress = goalMs > 0 ? Math.min(1, Math.max(0, elapsed / goalMs)) : 0;
+  const reachedGoal = goalMs > 0 && elapsed >= goalMs;
   const { index, current, next } = stageAt(elapsed / 3.6e6);
   const stage = localizedStage(current);
 
-  setText(el.timeValue, formatElapsed(elapsed));
-  setText(el.label, stage.title);
-  if (lastSubHidden !== false) { el.timeWord.hidden = false; el.sub.hidden = false; lastSubHidden = false; }
-  setText(el.subValue, reachedGoal
-    ? `+${formatElapsed(elapsed - goalMs)}`
-    : formatElapsed(goalMs - elapsed));
-  setText(el.subWord, reachedGoal ? t("gauge.overflowing") : t("gauge.toTop"));
-  setText(el.detail, reachedGoal
-    ? t("gauge.goalSmashed", { goal: activeFast.goalHours })
-    : t("gauge.pctOfGoal", { pct: Math.floor((elapsed / goalMs) * 100), goal: activeFast.goalHours }));
+  setText(el.ringLabel, stage.title);
+  setText(el.ringTime, formatElapsed(elapsed));
+  setText(el.ringMeta, reachedGoal
+    ? t("ring.past", { time: formatDuration(elapsed - goalMs), goal: activeFast.goalHours })
+    : t("ring.left", { time: formatCountdown(goalMs - elapsed) }));
 
-  paintGauge(elapsed, activeFast.goalHours);
-  markStages(index);
-  measureGaugeVisibility();
-  syncWaves();
-
-  setText(el.coachNext, next
+  setText(el.coach, next
     ? t("coach.until", { time: formatCountdown(next.hour * 3.6e6 - elapsed), stage: localizedStage(next).title })
     : t("coach.pastAll"));
+
+  paintRing(progress, reachedGoal);
+  markStages(index);
 
   if (!primed) {
     lastStageIndex = index;
@@ -303,10 +251,11 @@ function buildStages() {
     li.innerHTML = `
       <span class="stage__hour"></span>
       <div class="stage__body">
-        <h3 class="stage__title"><span aria-hidden="true">${stage.icon}</span><span></span></h3>
+        <h3 class="stage__title"><span aria-hidden="true"></span><span></span></h3>
         <p class="stage__text"></p>
       </div>`;
     li.querySelector(".stage__hour").textContent = `${stage.hour}h`;
+    li.querySelector(".stage__title span:first-child").textContent = stage.icon;
     li.querySelector(".stage__title span:last-child").textContent = stage.title;
     li.querySelector(".stage__text").textContent = stage.text;
     return li;
@@ -320,6 +269,25 @@ function markStages(activeIndex) {
     const state = i === activeIndex ? "active" : i < activeIndex ? "done" : "todo";
     if (stageNodes[i].dataset.state !== state) stageNodes[i].dataset.state = state;
   }
+}
+
+/* ── Goal picker ──────────────────────────────────────────────────── */
+
+/**
+ * One control instead of a wall of chips. Any goal already saved that isn't on
+ * the menu is added, so the picker can never show a value that isn't yours.
+ */
+function buildGoalOptions() {
+  const saved = store.state.activeFast?.goalHours ?? store.state.settings.goalHours;
+  const hours = [...new Set([...GOAL_CHOICES, saved])].sort((a, b) => a - b);
+
+  el.goalSelect.replaceChildren(...hours.map((h) => {
+    const option = document.createElement("option");
+    option.value = h;
+    option.textContent = t("goal.option", { h });
+    return option;
+  }));
+  el.goalSelect.value = String(saved);
 }
 
 /* ── Streak calendar ──────────────────────────────────────────────── */
@@ -381,12 +349,8 @@ function paintCalendar(fasts) {
     const hit = hits.has(idx);
     if (hit) monthHits++;
 
-    const column = (firstDow + date - 1) % 7;
-    // Chain into tomorrow only when it's fasted and sits in the same week row.
-    const chain = hit && column < 6 && date < daysInMonth && hits.has(idx + 1);
-
     const cell = document.createElement("div");
-    cell.className = `cell${chain ? " cell--chain" : ""}`;
+    cell.className = "cell";
 
     const day = document.createElement("span");
     day.className = "day" +
@@ -425,7 +389,7 @@ function paintHistory(fasts) {
     el.historyHint.textContent = t("history.emptyHint");
     const empty = document.createElement("p");
     empty.className = "empty";
-    empty.innerHTML = `<span class="empty__drop" aria-hidden="true">💧</span><br>`;
+    empty.innerHTML = `<span class="empty__mark" aria-hidden="true">💧</span>`;
     empty.append(t("history.empty"));
     el.history.replaceChildren(empty);
     return;
@@ -442,7 +406,7 @@ function paintHistory(fasts) {
     row.className = "entry";
     row.dataset.hit = String(hit);
     row.innerHTML = `
-      <span class="entry__badge" aria-hidden="true">${hit ? "🏆" : "💧"}</span>
+      <span class="entry__hit" aria-hidden="true"></span>
       <div class="entry__main">
         <span class="entry__dur"></span>
         <span class="entry__when"></span>
@@ -476,17 +440,16 @@ function paintHistory(fasts) {
 }
 
 function paintControls() {
-  const running = Boolean(store.state.activeFast);
-  const goal = store.state.activeFast?.goalHours ?? store.state.settings.goalHours;
+  const active = store.state.activeFast;
+  const running = Boolean(active);
+  const goal = active?.goalHours ?? store.state.settings.goalHours;
 
   el.startBtn.hidden = running;
   el.endBtn.hidden = !running;
-  el.editStartBtn.hidden = !running;
-  el.cancelBtn.hidden = !running;
+  el.timerFoot.hidden = !running;
 
-  el.startedAt.hidden = !running;
   if (running) {
-    const { start, goalHours } = store.state.activeFast;
+    const { start, goalHours } = active;
     const goalAt = start + goalHours * 3.6e6;
     const sameDay = dayIndex(goalAt) === dayIndex(start);
     el.startedAt.textContent = t("controls.startedAt", {
@@ -496,12 +459,19 @@ function paintControls() {
     });
   }
 
-  const goalTitle = running ? t("controls.goalLocked") : "";
-  for (const chip of el.goalRow.querySelectorAll(".chip")) {
-    const pressed = String(Number(chip.dataset.goal) === goal);
-    if (chip.getAttribute("aria-pressed") !== pressed) chip.setAttribute("aria-pressed", pressed);
-    if (chip.disabled !== running) chip.disabled = running;
-    if (chip.title !== goalTitle) chip.title = goalTitle;
+  // A goal already in progress is fixed; the picker shows it, greyed.
+  if (el.goalSelect.disabled !== running) {
+    el.goalSelect.disabled = running;
+    el.goalRow.classList.toggle("goal--locked", running);
+  }
+  const lockNote = running ? t("goal.locked") : "";
+  if (el.goalRow.title !== lockNote) el.goalRow.title = lockNote;
+
+  const value = String(goal);
+  if (el.goalSelect.value !== value) {
+    // A goal restored from another device may not be on the menu yet.
+    if (!Array.from(el.goalSelect.options).some((o) => o.value === value)) buildGoalOptions();
+    el.goalSelect.value = value;
   }
 }
 
@@ -557,6 +527,7 @@ function openEditor(target) {
   const active = store.state.activeFast;
   if (!mode) return;
   if ((target.kind === "active" || target.kind === "end") && !active) return;
+  if (el.editModal.open) return;
 
   editTarget = target;
   const nowValue = toLocalInput(Date.now());
@@ -565,22 +536,30 @@ function openEditor(target) {
   el.editHint.textContent = t(mode.hintKey);
   el.saveEditBtn.textContent = t(mode.saveKey);
 
-  // Only the fields a mode actually shows have a value; an "end" target has no
-  // `start` of its own, and formatting `undefined` as a date throws.
+  /*
+   * Only the fields a mode actually shows have a value; an "end" target has no
+   * `start` of its own, and formatting `undefined` as a date throws.
+   *
+   * Deliberately no `max`. "Not in the future" is the one bound that moves
+   * while the dialog sits open: a max of 10:30 pinned at open time would
+   * reject 10:32 two minutes later, even though 10:32 is now safely in the
+   * past. validateEditor() re-reads the clock on submit, so it owns that rule.
+   * `min` is derived from a start that cannot drift, so it stays.
+   */
   setField(el.startField, el.startInput, {
     show: mode.start,
     value: target.kind === "active" ? toLocalInput(active.start)
-         : target.kind === "fast"   ? toLocalInput(target.start) : "",
-    max: nowValue
+         : target.kind === "fast"   ? toLocalInput(target.start) : ""
   });
 
   setField(el.endField, el.endInput, {
     show: mode.end,
     value: target.kind === "end"  ? nowValue
          : target.kind === "fast" ? toLocalInput(target.end) : "",
-    // Can't end before you began, can't end after now.
-    min: target.kind === "end" ? toLocalInput(active.start) : null,
-    max: nowValue
+    // Can't end before you began. Rounded *up* to the minute: a fast begun at
+    // 10:00:45 must not offer 10:00 as an end.
+    min: target.kind === "end"  ? toLocalInputCeil(active.start)
+       : target.kind === "fast" ? toLocalInputCeil(target.start + 1) : null
   });
 
   el.editError.hidden = true;
@@ -656,9 +635,8 @@ function validateEditor() {
 /* ── Events ───────────────────────────────────────────────────────── */
 
 function wireControls() {
-  el.goalRow.addEventListener("click", (event) => {
-    const chip = event.target.closest(".chip");
-    if (chip) store.setGoal(Number(chip.dataset.goal));
+  el.goalSelect.addEventListener("change", () => {
+    store.setGoal(Number(el.goalSelect.value));
   });
 
   el.startBtn.addEventListener("click", async () => {
@@ -696,11 +674,29 @@ function wireControls() {
   // Escape dismisses the dialog without a submit; don't leave a target behind.
   el.editModal.addEventListener("cancel", () => { editTarget = null; });
 
-  // `max` on the inputs lets the browser block a submit before our validator
-  // runs, which would leave a stale message on screen. Clear it as they type.
   for (const input of [el.startInput, el.endInput]) {
     input.addEventListener("input", () => { el.editError.hidden = true; });
+
+    /*
+     * `min` and `required` let the browser refuse the submit before our own
+     * handler ever runs, which would leave the dialog open saying nothing at
+     * all — the native bubble is easy to miss and can't be styled. Take the
+     * message back: suppress the bubble and print the same in-dialog text
+     * every other failure uses.
+     */
+    input.addEventListener("invalid", (event) => {
+      event.preventDefault();
+      el.editError.textContent = validateEditor() ?? t("valid.outOfRange");
+      el.editError.hidden = false;
+    });
   }
+
+  el.startInput.addEventListener("input", () => {
+    if (editTarget?.kind !== "fast") return;
+    const start = parseField(el.startInput);
+    if (Number.isNaN(start)) el.endInput.removeAttribute("min");
+    else el.endInput.min = toLocalInputCeil(start + 1);
+  });
 
   /*
    * The save happens here rather than on the dialog's `close` event. A
@@ -720,43 +716,34 @@ function wireControls() {
   });
 }
 
+/** Cross-fades every colour, then gets out of the way so hover stays snappy. */
+let themingTimer = null;
+
 function wireTheme() {
   el.themeBtn.addEventListener("click", () => {
     const next = root.dataset.theme === "dark" ? "light" : "dark";
     store.theme = next;
     root.dataset.theme = next;
+
+    document.body.classList.add("theming");
+    clearTimeout(themingTimer);
+    themingTimer = setTimeout(() => document.body.classList.remove("theming"), 600);
   });
-}
-
-/** Reflects the current lite state onto the footer toggle; re-run on language change. */
-function syncPerfBtn() {
-  const lite = root.dataset.lite === "true";
-  el.perfBtn.setAttribute("aria-pressed", String(lite));
-  el.perfBtn.textContent = lite ? t("perf.reduced") : t("perf.reduce");
-  el.perfBtn.title = lite ? t("perf.reducedTitle") : t("perf.reduceTitle");
-}
-
-/** Lite mode is chosen before first paint by the inline boot script. */
-function wirePerf() {
-  el.perfBtn.addEventListener("click", () => {
-    const lite = root.dataset.lite === "true";
-    if (lite) delete root.dataset.lite;
-    else root.dataset.lite = "true";
-    localStorage.setItem("waterline:perf", lite ? "full" : "lite");
-    syncPerfBtn();
-  });
-
-  syncPerfBtn();
 }
 
 /* ── Language ─────────────────────────────────────────────────────── */
 
 let currentUser = null;
+let syncState = "local";          // local | live | offline, from the store
+let idleQuote = "";
 
-/** Footer status line — depends on both the signed-in user and the language. */
+/** Footer status line — depends on the user, the language and the connection. */
 function updateBuildMode() {
+  const name = currentUser?.displayName ?? currentUser?.email ?? "";
   if (currentUser) {
-    el.buildMode.textContent = t("status.syncingAs", { name: currentUser.displayName ?? currentUser.email });
+    el.buildMode.textContent = syncState === "offline"
+      ? t("status.offline")
+      : t("status.syncingAs", { name });
   } else {
     el.buildMode.textContent = store.canSignIn ? t("status.localSignin") : t("status.local");
   }
@@ -770,10 +757,10 @@ function syncLangBtn() {
 function applyLanguage() {
   applyStatic(document);
   syncLangBtn();
-  syncPerfBtn();
   updateBuildMode();
-  el.coachQuote.textContent = localizedQuote(QUOTES);
+  idleQuote = localizedQuote(QUOTES);
   buildStages();
+  buildGoalOptions();
   lastFastsKey = null;   // force the data-driven lists to repaint in the new language
   render();
 }
@@ -817,6 +804,7 @@ function wireAuth() {
 
   el.signOutBtn.addEventListener("click", async () => {
     el.userMenu.hidden = true;
+    el.avatarBtn.setAttribute("aria-expanded", "false");
     await store.signOut();
     toast(t("toast.signedOut"), { icon: "👋" });
   });
@@ -826,11 +814,19 @@ function wireAuth() {
     el.signInBtn.hidden = Boolean(user);
     el.avatarMenu.hidden = !user;
     if (user) {
+      const name = user.displayName ?? "Signed in";
       el.avatarImg.src = user.photoURL ?? "";
-      el.avatarImg.alt = user.displayName ?? "Your account";
-      el.menuName.textContent = user.displayName ?? "Signed in";
+      el.avatarImg.alt = "";
+      el.chipName.textContent = name;
+      el.menuName.textContent = name;
       el.menuEmail.textContent = user.email ?? "";
     }
+    updateBuildMode();
+  });
+
+  // Local / Live / Offline, decided by the store as snapshots arrive.
+  store.addEventListener("status", ({ detail }) => {
+    syncState = detail.state;
     updateBuildMode();
   });
 
@@ -843,23 +839,26 @@ function wireAuth() {
 
 applyStatic(document);      // swap the static HTML into the chosen language before first paint
 syncLangBtn();
-el.coachQuote.textContent = localizedQuote(QUOTES);
-resetGauge();
+idleQuote = localizedQuote(QUOTES);
 buildStages();
+buildGoalOptions();
 buildCalendar();
 wireTheme();
 wireLang();
-wirePerf();
 wireControls();
 wireAuth();
 updateBuildMode();
 
-watchGaugeVisibility();
 store.subscribe(render);
 render();
 store.init();
 
-// A hidden tab still runs compositor animations; stop the clock and the waves.
+// Let the first paint land before anything is allowed to animate.
+requestAnimationFrame(() => requestAnimationFrame(() => {
+  document.body.classList.remove("preload");
+}));
+
+// A hidden tab still runs compositor animations; stop the clock while it is.
 // Crossing midnight with the tab open moves "today" and can extend a streak,
 // so the calendar and stats are repainted when the calendar day changes.
 let shownDay = dayIndex(Date.now());
@@ -873,14 +872,7 @@ setInterval(() => {
     paintStats(store.state.fasts);
   }
 }, 1000);
-document.addEventListener("visibilitychange", () => {
-  if (document.hidden) {
-    root.dataset.hidden = "true";
-  } else {
-    delete root.dataset.hidden;
-    tick();
-  }
-});
+document.addEventListener("visibilitychange", () => { if (!document.hidden) tick(); });
 
 if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
   addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(() => {}));

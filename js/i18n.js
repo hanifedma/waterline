@@ -31,24 +31,27 @@ export function setLang(lang) {
  */
 const DICT = {
   en: {
+    "a11y.skip": "Skip to content",
     "a11y.home": "Waterline home",
     "a11y.theme": "Toggle colour theme",
     "a11y.lang": "Change language",
+    "a11y.ring": "Fasting progress",
+    "a11y.stats": "Your statistics",
     "a11y.prevMonth": "Previous month",
     "a11y.nextMonth": "Next month",
 
     "nav.signIn": "Sign in",
     "nav.signOut": "Sign out",
 
-    "gauge.ready": "Ready when you are",
-    "gauge.underway": "Underway",
-    "gauge.toTop": "to the top",
-    "gauge.overflowing": "overflowing",
-    "gauge.readyDetail": "Goal: {goal}h · tap begin",
-    "gauge.goalSmashed": "{goal}h goal smashed",
-    "gauge.pctOfGoal": "{pct}% of {goal}h",
+    "ring.ready": "Ready when you are",
+    "ring.readyMeta": "{goal}h goal",
+    "ring.left": "{time} left",
+    "ring.past": "{time} past your {goal}h goal",
 
     "goal.label": "Goal",
+    "goal.option": ({ h }) => `${h} hours`,
+    "goal.locked": "End your fast to change the goal",
+
     "btn.begin": "Begin fast",
     "btn.end": "End fast",
     "btn.editStart": "Edit start",
@@ -58,17 +61,17 @@ const DICT = {
     "coach.pastAll": "You are past every milestone on the map.",
 
     "stats.streak": "Day streak",
-    "stats.longest": "Longest fast",
-    "stats.total": "Fasts completed",
-    "stats.hours": "Hours fasted",
+    "stats.longest": "Longest",
+    "stats.total": "Completed",
+    "stats.hours": "Total time",
 
-    "cal.heading": "Streak calendar",
+    "cal.heading": "Calendar",
     "cal.emptyHint": "No fasts logged yet",
     "cal.summary": ({ streak, days, month }) =>
       `${streak}-day streak · ${days} day${days === 1 ? "" : "s"} in ${month}`,
     "cal.fastedOn": "Fasted on {date}",
 
-    "stages.heading": "What's happening inside you",
+    "stages.heading": "What happens inside you",
     "stages.subhead": "The metabolic timeline of a water fast",
     "label.now": "NOW",
 
@@ -76,29 +79,23 @@ const DICT = {
     "history.emptyHint": "Nothing logged yet",
     "history.empty": "Your first fast will appear here. Start the clock whenever you're ready.",
     "history.count": ({ n }) => `${n} fast${n === 1 ? "" : "s"} logged`,
-    "history.goalTag": "{goal}h goal",
+    "history.goalTag": "{goal}h",
     "entry.editAria": "Edit this fast",
     "entry.deleteAria": "Delete this fast",
     "entry.deleteConfirm": "Delete this fast? This can't be undone.",
 
     "controls.startedAt": ({ start, goal, goalAt }) =>
       `Started ${start} · ${goal}h goal at ${goalAt}`,
-    "controls.goalLocked": "Locked — end your fast to change the goal",
 
     "disclaimer.title": "Health note.",
     "disclaimer.body":
       "Waterline is an informational tool, not medical advice. Extended water fasting can be dangerous if you are pregnant or breastfeeding, underweight, diabetic, on medication, or have a history of disordered eating. Talk to a doctor before fasts longer than 24 hours, and stop immediately if you feel faint, confused, or unwell.",
 
     "footer.tagline": "Waterline · Fill your waterline.",
-    "perf.reduce": "Reduce motion",
-    "perf.reduced": "Motion reduced",
-    "perf.reduceTitle": "Turn off blur, ambient motion and glows to save battery and CPU.",
-    "perf.reducedTitle": "Blur, ambient motion and glows are off. Click to restore them.",
 
     "modal.startTime": "Start time",
     "modal.endTime": "End time",
     "modal.cancel": "Cancel",
-    "modal.save": "Save",
     "done.close": "Nice",
 
     "editor.activeTitle": "When did you actually start?",
@@ -118,6 +115,7 @@ const DICT = {
     "valid.startFuture": "A fast can't start in the future.",
     "valid.tooOld": "That's more than 30 days ago.",
     "valid.endAfterStart": "The end has to come after the start.",
+    "valid.outOfRange": "That time is out of range.",
 
     "done.goalReached": "Goal reached",
     "done.fastLogged": "Fast logged",
@@ -139,30 +137,34 @@ const DICT = {
     "notify.goalTitle": "Goal reached 🏆",
     "notify.goalBody": "You hit your {goal}-hour goal.",
 
-    "status.syncingAs": "Syncing live as {name}",
+    "status.syncingAs": "Synced as {name}",
+    "status.offline": "Offline — changes will sync when you're back",
     "status.localSignin": "Local mode — sign in to sync",
     "status.local": "Local mode"
   },
 
   ko: {
+    "a11y.skip": "본문으로 건너뛰기",
     "a11y.home": "Waterline 홈",
     "a11y.theme": "색상 테마 전환",
     "a11y.lang": "언어 변경",
+    "a11y.ring": "단식 진행률",
+    "a11y.stats": "나의 통계",
     "a11y.prevMonth": "이전 달",
     "a11y.nextMonth": "다음 달",
 
     "nav.signIn": "로그인",
     "nav.signOut": "로그아웃",
 
-    "gauge.ready": "준비되면 시작하세요",
-    "gauge.underway": "진행 중",
-    "gauge.toTop": "가득 차기까지",
-    "gauge.overflowing": "흘러넘치는 중",
-    "gauge.readyDetail": "목표: {goal}시간 · 시작을 누르세요",
-    "gauge.goalSmashed": "{goal}시간 목표 달성",
-    "gauge.pctOfGoal": "{goal}시간 중 {pct}%",
+    "ring.ready": "준비되면 시작하세요",
+    "ring.readyMeta": "목표 {goal}시간",
+    "ring.left": "{time} 남음",
+    "ring.past": "{goal}시간 목표에서 {time} 초과",
 
     "goal.label": "목표",
+    "goal.option": ({ h }) => `${h}시간`,
+    "goal.locked": "목표를 바꾸려면 단식을 종료하세요",
+
     "btn.begin": "단식 시작",
     "btn.end": "단식 종료",
     "btn.editStart": "시작 시간 수정",
@@ -172,11 +174,11 @@ const DICT = {
     "coach.pastAll": "지도의 모든 단계를 지나왔습니다.",
 
     "stats.streak": "연속 일수",
-    "stats.longest": "최장 단식",
-    "stats.total": "완료한 단식",
-    "stats.hours": "누적 단식 시간",
+    "stats.longest": "최장 기록",
+    "stats.total": "완료",
+    "stats.hours": "누적 시간",
 
-    "cal.heading": "연속 기록 달력",
+    "cal.heading": "달력",
     "cal.emptyHint": "아직 기록된 단식이 없습니다",
     "cal.summary": ({ streak, days, month }) =>
       `${streak}일 연속 · ${month}에 ${days}일`,
@@ -190,29 +192,23 @@ const DICT = {
     "history.emptyHint": "아직 기록이 없습니다",
     "history.empty": "첫 단식이 여기에 표시됩니다. 준비되면 언제든 시작하세요.",
     "history.count": ({ n }) => `${n}개 기록됨`,
-    "history.goalTag": "{goal}시간 목표",
+    "history.goalTag": "{goal}시간",
     "entry.editAria": "이 단식 수정",
     "entry.deleteAria": "이 단식 삭제",
     "entry.deleteConfirm": "이 단식을 삭제할까요? 되돌릴 수 없습니다.",
 
     "controls.startedAt": ({ start, goal, goalAt }) =>
       `${start} 시작 · 목표 ${goal}시간, ${goalAt} 도달`,
-    "controls.goalLocked": "잠김 — 목표를 바꾸려면 단식을 종료하세요",
 
     "disclaimer.title": "건강 유의사항.",
     "disclaimer.body":
       "Waterline은 정보 제공 도구이며 의학적 조언이 아닙니다. 임신·수유 중이거나 저체중, 당뇨, 복약 중이거나 섭식 장애 이력이 있다면 장시간 물 단식은 위험할 수 있습니다. 24시간이 넘는 단식 전에는 의사와 상담하고, 어지럽거나 혼란스럽거나 몸이 좋지 않으면 즉시 중단하세요.",
 
     "footer.tagline": "Waterline · 당신의 수위를 채우세요.",
-    "perf.reduce": "모션 줄이기",
-    "perf.reduced": "모션 감소됨",
-    "perf.reduceTitle": "배터리와 CPU를 아끼려면 블러·움직임·광채를 끕니다.",
-    "perf.reducedTitle": "블러·움직임·광채가 꺼져 있습니다. 다시 켜려면 누르세요.",
 
     "modal.startTime": "시작 시간",
     "modal.endTime": "종료 시간",
     "modal.cancel": "취소",
-    "modal.save": "저장",
     "done.close": "좋아요",
 
     "editor.activeTitle": "실제로 언제 시작했나요?",
@@ -232,6 +228,7 @@ const DICT = {
     "valid.startFuture": "단식은 미래에 시작될 수 없습니다.",
     "valid.tooOld": "30일보다 이전입니다.",
     "valid.endAfterStart": "종료 시간은 시작 이후여야 합니다.",
+    "valid.outOfRange": "허용 범위를 벗어난 시간입니다.",
 
     "done.goalReached": "목표 달성",
     "done.fastLogged": "단식 기록됨",
@@ -252,7 +249,8 @@ const DICT = {
     "notify.goalTitle": "목표 달성 🏆",
     "notify.goalBody": "{goal}시간 목표를 달성했어요.",
 
-    "status.syncingAs": "{name}(으)로 실시간 동기화 중",
+    "status.syncingAs": "{name}(으)로 동기화 중",
+    "status.offline": "오프라인 — 연결되면 동기화됩니다",
     "status.localSignin": "로컬 모드 — 로그인하면 동기화됩니다",
     "status.local": "로컬 모드"
   }

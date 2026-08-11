@@ -7,21 +7,23 @@
 **Fill your waterline.**
 A free, real-time water fasting tracker — no build step, no backend to run, no cost.
 
+<img src="docs/screenshot-dark.png" width="380" alt="Waterline in dark mode: a green progress ring showing a fast 5 hours 30 minutes in, stats, and a streak calendar"> <img src="docs/screenshot-light.png" width="380" alt="The same screen in light mode">
+
 </div>
 
 ---
 
 ## What it is
 
-A fasting timer that you can actually *see*. Pick a goal, hit begin, and a bowl fills with
-water hour by hour. Along the way it tells you what's happening inside you — insulin falling,
-glycogen emptying, ketosis, autophagy — and cheers you on when you cross each threshold.
+A fasting timer you can read in one glance. Pick a goal, hit begin, and one ring fills
+while the clock counts. Along the way it tells you what's happening inside you — insulin
+falling, glycogen emptying, ketosis, autophagy — and cheers you on when you cross each
+threshold.
 
-The timer shows how much is **left** against your goal and when you'll reach it. Pass the goal
-and it keeps counting: the ring turns gold, the bowl brims, and the fast is logged at its true
-length. Ending asks *when* you broke it (defaulting to now, never accepting a future time), and
-any logged fast's start and end can be corrected afterwards. A **streak calendar** chains your
-consecutive days together.
+The face shows time elapsed and time left. Pass the goal and it keeps counting: the ring
+turns amber, and the fast is logged at its true length. Ending asks *when* you broke it
+(defaulting to now, never accepting a future time), and any logged fast's start and end can
+be corrected afterwards. A **streak calendar** chains your consecutive days together.
 
 - **Real-time sync.** Start a fast on your laptop, watch it tick on your phone. No refresh, no button.
 - **Works signed out.** Everything runs from `localStorage`. Sign in later and your history moves with you.
@@ -30,46 +32,59 @@ consecutive days together.
 - **Dark and light.** Follows your system, remembers your choice.
 - **English and Korean.** One tap in the header swaps the interface; your own data — times,
   durations, dates — always stays in your device's own locale.
-- **Light on slow connections and weak hardware.** See below.
+
+## The design
+
+Flat surfaces, one accent colour, no gradients, no blur, no glow — the palette is shared
+with [hanifedma.com/ponder](https://hanifedma.com/ponder/) so the two apps read as one
+family. Everything sits in a single 640 px column, and every control in the header speaks
+the same shape language: 40 px tall, 1 px border, 11 px radius.
+
+Type is San Francisco — Apple's system typeface — reached through `-apple-system`. On
+Windows it falls back to Segoe UI, on Android to Roboto. Nothing is downloaded, so there is
+no font request on any connection.
+
+### The ring is eased on purpose
+
+Real progress is linear and, early on, invisible: twenty minutes into a 16-hour fast is 2% —
+a sliver that reads as *you have done nothing*. So the ring is drawn through `p^0.55`, which
+front-loads the fill and then slows as you approach the goal:
+
+| Elapsed | True progress | Ring shows |
+|---|---|---|
+| 20 min of 16 h | 2% | 12% |
+| 1 h 36 m of 16 h | 10% | 28% |
+| 5 h 30 m of 16 h | 34% | 56% |
+| 8 h of 16 h | 50% | 68% |
+| 14 h 24 m of 16 h | 90% | 94% |
+| 16 h of 16 h | 100% | 100% |
+
+It still starts empty and lands exactly on full at the goal, so it never disagrees with
+itself. **Nothing numeric is eased** — the clock, the time remaining, the logged duration,
+the streak and every statistic are the real values. `RING_CURVE` in `js/app.js` is the one
+knob; set it to `1` for a linear ring.
 
 ## Built to run anywhere
 
-Waterline is about 40 KB of HTML, CSS and JavaScript, and it downloads **no fonts, no
-frameworks and no images** to render the first screen.
+The first screen is 110 KB of HTML, CSS and JavaScript — **33 KB over the wire** once your
+server gzips it — and it downloads **no fonts, no frameworks and no images** to render.
+(A third of the source is Korean translations and comments, both of which compress away.)
 
-**On a slow connection**
-
-- Typography is San Francisco via `-apple-system` — Apple's own system typeface, already on
-  the device. Segoe UI on Windows, Roboto on Android. Zero font requests.
 - The whole module graph is declared with `modulepreload`, so `app.js`, `store.js`,
-  `stages.js` and `config.js` are fetched in parallel instead of in a three-deep waterfall.
+  `stages.js`, `i18n.js` and `config.js` are fetched in parallel instead of in a
+  four-deep waterfall.
 - The Firebase SDK is a dynamic `import()` that only runs once you've configured it, and
   never blocks the first paint.
 - A service worker caches the shell, so every visit after the first renders offline-instantly.
-
-**On a slow CPU or a device with no GPU**
-
-`html[data-lite]` switches off blur, ambient motion, glows and shadows. It turns itself on
-automatically for `prefers-reduced-motion`, Save-Data, 2G, ≤4 CPU cores or ≤4 GB RAM, and
-anyone can flip it from the **Reduce motion** button in the footer. The choice is remembered.
-
-Even at full quality the app is careful:
-
-- The ambient background uses radial gradients rather than `filter: blur()` on animated
-  elements — a blurred layer has to be re-rasterised every frame when it scales.
-- The progress ring and water level are only written to the DOM when they *visibly* move.
-  Naively, a 16-hour fast nudges `stroke-dashoffset` by 0.015 px every second, and each
-  write restarts an 800 ms transition on a drop-shadowed stroke — a permanent repaint loop
-  for a change no one can see.
-- Long sections use `content-visibility: auto`, so the browser doesn't lay them out until
-  you scroll near them.
-- A hidden tab pauses the wave animation and the one-second clock entirely.
-- The waves — the page's only permanent repaint — stop whenever no fast is
-  running or the bowl is scrolled off screen. Sitting idle, Waterline performs
-  **zero DOM writes per second**; running, exactly one (the clock).
-- Firestore write acknowledgements are never awaited. Offline they never
-  arrive, and awaiting one would hang the UI on a write the local cache has
-  already applied.
+- The ring is only written to the DOM when it *visibly* moves. Naively, a 16-hour fast nudges
+  `stroke-dashoffset` by a fraction of a pixel every second, and each write restarts a 700 ms
+  transition — a permanent repaint loop for a change no one can see.
+- A hidden tab pauses the one-second clock entirely. Sitting idle, Waterline performs zero
+  DOM writes per second; running, exactly one.
+- There is nothing expensive enough to need a "low power" mode. `prefers-reduced-motion` is
+  honoured in CSS and that's the whole story.
+- Firestore write acknowledgements are never awaited. Offline they never arrive, and awaiting
+  one would hang the UI on a write the local cache has already applied.
 
 ## Run it locally
 
@@ -98,10 +113,10 @@ Free forever on Firebase's Spark plan for personal use.
 5. **Project settings (⚙) → General → Your apps →** click the web icon `</>`, register the app,
    and copy the `firebaseConfig` values.
 6. Paste them into [`js/config.js`](js/config.js).
-7. **Authentication → Settings → Authorized domains →** add `localhost` and your GitHub Pages
-   domain, e.g. `yourname.github.io`.
+7. **Authentication → Settings → Authorized domains →** add `localhost` and the domain you
+   deploy to, e.g. `yourname.github.io`.
 
-Reload. The pill in the header flips from `Local` to `Live`, and any fasts you recorded as a
+Reload. The footer flips from `Local mode` to `Synced as …`, and any fasts you recorded as a
 guest are moved into your account automatically.
 
 > The values in `js/config.js` are **not secrets** — they identify your project, they don't grant
@@ -110,11 +125,6 @@ guest are moved into your account automatically.
 ## Deploy to GitHub Pages
 
 ```bash
-git init
-git add .
-git commit -m "Waterline"
-git branch -M main
-git remote add origin https://github.com/YOURNAME/YOURREPO.git
 git push -u origin main
 ```
 
@@ -127,6 +137,10 @@ Two things to update once you know your URL — search engines and social previe
 - `sitemap.xml` and `robots.txt` — the `<loc>` and `Sitemap:` lines
 
 Every internal path is relative, so the app works from a subfolder without any other change.
+
+**After every deploy, bump `VERSION` in [`sw.js`](sw.js).** The service worker serves the old
+cached CSS and JS until that string changes, so a stale version is the usual reason a deploy
+"didn't take".
 
 ## How the sync works
 
@@ -147,12 +161,13 @@ start time, then clears the guest store.
 index.html            app shell, SEO tags, JSON-LD
 404.html              themed, bilingual not-found page
 css/style.css         design tokens, dark + light themes
+docs/                 README screenshots
 js/config.js          ← your Firebase keys go here
 js/store.js           local + Firestore backends behind one interface
 js/stages.js          metabolic timeline, encouragement copy (English, canonical)
 js/i18n.js            interface translations (English + Korean) and the language switch
 js/app.js             rendering, timer loop, streak calendar, milestone celebrations
-sw.js                 offline shell cache
+sw.js                 offline shell cache — bump VERSION on every deploy
 firestore.rules       owner-only access — publish this
 test.html             open it in a browser; 77 assertions, no dependencies
 ```

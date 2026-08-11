@@ -5,45 +5,38 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Lost at sea — Waterline</title>
 <meta name="robots" content="noindex">
-<meta name="theme-color" content="#050c17" media="(prefers-color-scheme: dark)">
-<meta name="theme-color" content="#f2f7fb" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0f0f0f" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
 <meta name="color-scheme" content="dark light">
 <link rel="icon" href="./favicon.ico" sizes="any">
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="./css/style.css">
 <style>
   .lost {
-    min-height: 82dvh; display: grid; place-content: center;
-    justify-items: center; gap: .85rem; text-align: center;
-    width: var(--shell); margin-inline: auto;
+    min-height: 84dvh; display: grid; place-content: center;
+    justify-items: center; gap: 12px; text-align: center;
+    max-width: var(--maxw); margin-inline: auto; padding: 24px 18px;
   }
-  .lost__drop { font-size: 3.6rem; animation: bob 2.6s var(--ease) infinite; }
-  html[data-lite] .lost__drop { animation: none; }
-  .lost h1 { font-size: clamp(1.8rem, 6vw, 2.6rem); }
-  .lost p { color: var(--text-dim); max-width: 42ch; }
-  .lost .btn { margin-top: .4rem; }
+  .lost__mark { font-size: 44px; line-height: 1; }
+  .lost h1 { font-size: clamp(22px, 6vw, 30px); }
+  .lost p { color: var(--muted); max-width: 40ch; font-size: 14px; }
+  .lost .btn { margin-top: 6px; text-decoration: none; }
 </style>
 </head>
 <body>
-<div class="aurora" aria-hidden="true">
-  <span class="aurora__blob aurora__blob--1"></span>
-  <span class="aurora__blob aurora__blob--2"></span>
-  <span class="aurora__blob aurora__blob--3"></span>
-</div>
 
 <main class="lost">
-  <span class="lost__drop" aria-hidden="true">💧</span>
+  <span class="lost__mark" aria-hidden="true">💧</span>
   <h1 id="t">Lost at sea</h1>
   <p id="p">That page drifted off. There's nothing here but open water.</p>
-  <a class="btn btn--primary btn--lg" href="./" id="b">Back to your fast</a>
+  <a class="btn btn-primary btn-lg" href="./" id="b">Back to your fast</a>
 </main>
 
 <script>
-  // Match the app's theme, performance and language choices — no modules here.
+  // Match the app's theme and language choices — no modules here.
   const root = document.documentElement;
   root.dataset.theme = localStorage.getItem("waterline:theme")
     || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
-  if (localStorage.getItem("waterline:perf") === "lite") root.dataset.lite = "true";
 
   const saved = localStorage.getItem("waterline:lang");
   const lang = (saved === "en" || saved === "ko") ? saved
