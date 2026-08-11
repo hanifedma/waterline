@@ -69,6 +69,28 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  /*
+   * Our own code is network-first too, for the same reason navigations are.
+   * index.html always arrives fresh, so serving last version's CSS or modules
+   * beside it pairs new markup with old styles and old translations — and with
+   * no build step there are no hashed filenames to force a cache miss. Offline
+   * still falls back to the cache, so the app opens with no connection.
+   */
+  if (url.origin === location.origin && /\.(?:js|css)$/.test(url.pathname)) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response.ok) {
+            const copy = response.clone();
+            caches.open(VERSION).then((cache) => cache.put(request, copy));
+          }
+          return response;
+        })
+        .catch(() => caches.match(request).then((hit) => hit ?? Response.error()))
+    );
+    return;
+  }
+
   event.respondWith(
     caches.match(request).then((cached) => {
       const network = fetch(request)
