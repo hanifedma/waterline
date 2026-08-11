@@ -6,7 +6,7 @@
  * in the background. Firebase's own traffic is never touched — Firestore has
  * its own offline persistence and caching its API would corrupt sync.
  */
-const VERSION = "waterline-v30";
+const VERSION = "waterline-v31";
 const SHELL = [
   "./",
   "./index.html",
@@ -17,9 +17,14 @@ const SHELL = [
   "./js/i18n.js",
   "./js/config.js",
   "./manifest.webmanifest",
+  // Every icon belongs here. They are cached like any other asset, so one
+  // left out keeps serving last version's artwork until its own entry
+  // happens to be evicted — which is how a redrawn favicon stays stale.
   "./favicon.svg",
+  "./favicon.ico",
   "./icons/icon-192.png",
-  "./icons/icon-512.png"
+  "./icons/icon-512.png",
+  "./icons/apple-touch-icon.png"
 ];
 
 /** Hosts that must always go straight to the network. */
@@ -35,7 +40,10 @@ const BYPASS = [
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(VERSION)
-      .then((cache) => cache.addAll(SHELL))
+      // cache: "reload" bypasses the browser's own HTTP cache. Without it a
+      // still-fresh max-age can hand us the very bytes this version exists to
+      // replace, and the new cache is seeded with the old asset.
+      .then((cache) => cache.addAll(SHELL.map((url) => new Request(url, { cache: "reload" }))))
       .then(() => self.skipWaiting())
   );
 });
