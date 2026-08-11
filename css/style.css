@@ -20,6 +20,13 @@
 
 /* ---------- Dark (default) ---------- */
 :root[data-theme="dark"] {
+  /* Native widgets — the <select> popup, the date pickers, scrollbars — are
+     painted by the platform, not by us. Without this they render light while
+     inheriting our near-white text, which is invisible. It must follow
+     data-theme rather than the media query, because the toggle can disagree
+     with the system. */
+  color-scheme: dark;
+
   --bg:            #0f0f0f;
   --surface:       #1a1a1a;
   --surface-2:     #202021;
@@ -28,7 +35,9 @@
   --border-strong: #454545;
   --text:          #f0f0f0;
   --muted:         #a6a6a6;
-  --faint:         #6f6f6f;
+  /* Lifted off Ponder's #6f6f6f: at 11–13px on these surfaces that sat around
+     3.4:1, under the 4.5:1 floor. This clears it on bg, surface and surface-2. */
+  --faint:         #8a8a8a;
   --accent:        #22c55e;
   --accent-hover:  #4ade80;
   --accent-soft:   rgba(34, 197, 94, .16);
@@ -42,6 +51,8 @@
 
 /* ---------- Light ---------- */
 :root[data-theme="light"] {
+  color-scheme: light;
+
   --bg:            #ffffff;
   --surface:       #ffffff;
   --surface-2:     #f3f4f6;
@@ -50,7 +61,7 @@
   --border-strong: #d1d5db;
   --text:          #1a1a1a;
   --muted:         #565b64;
-  --faint:         #868e96;
+  --faint:         #6b7280;
   --accent:        #16a34a;
   --accent-hover:  #15803d;
   --accent-soft:   rgba(22, 163, 74, .10);
@@ -99,7 +110,7 @@ h1, h2, h3 { line-height: 1.25; font-weight: 600; letter-spacing: -.02em; }
    app.js adds .theming for the length of the fade and then removes it. */
 .theming, .theming *, .theming *::before, .theming *::after {
   transition-property: background-color, border-color, color, fill, stroke, box-shadow !important;
-  transition-duration: .55s !important;
+  transition-duration: 1.5s !important;
   transition-timing-function: ease !important;
 }
 
@@ -159,7 +170,7 @@ h1, h2, h3 { line-height: 1.25; font-weight: 600; letter-spacing: -.02em; }
 }
 .icon-btn:hover:not(:disabled) { background: var(--surface-3); color: var(--text); }
 .icon-btn:disabled { opacity: .4; cursor: default; }
-.icon-btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.icon-btn > svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .icon-btn--sm { width: 32px; height: 32px; }
 .icon-btn--sm svg { width: 16px; height: 16px; }
 
@@ -176,11 +187,11 @@ h1, h2, h3 { line-height: 1.25; font-weight: 600; letter-spacing: -.02em; }
   transition: background .12s ease, border-color .12s ease;
 }
 .lang-btn:hover { background: var(--surface-3); }
-.lang-glyph {
-  width: 15px; height: 15px; flex: 0 0 auto; color: var(--muted);
-  fill: none; stroke: currentColor; stroke-width: 1.7;
-  stroke-linecap: round; stroke-linejoin: round;
-}
+
+/* Emoji used as an icon: the system colour font already carries the colour,
+   so it only needs sizing and a line-box that won't shift the row. */
+.glyph { font-size: 14px; line-height: 1; flex: 0 0 auto; }
+.icon-btn--glyph .glyph { font-size: 16px; }
 #langLabel { min-width: 18px; text-align: center; }
 
 .sync-btn {
@@ -342,7 +353,7 @@ h1, h2, h3 { line-height: 1.25; font-weight: 600; letter-spacing: -.02em; }
 .goal--locked { opacity: .55; }
 .goal__label {
   font-size: 12px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase;
-  color: var(--faint);
+  color: var(--muted);
 }
 .select {
   border: none; background: transparent; color: var(--text);
@@ -350,6 +361,9 @@ h1, h2, h3 { line-height: 1.25; font-weight: 600; letter-spacing: -.02em; }
   padding: 6px 4px; border-radius: 8px; cursor: pointer;
 }
 .select:disabled { cursor: default; }
+/* Belt and braces: a few platforms paint the popup list from the page's own
+   colours regardless of color-scheme, so name both explicitly. */
+.select option { background: var(--surface); color: var(--text); }
 
 .timer__foot {
   display: flex; flex-direction: column; align-items: center; gap: 4px;
@@ -366,6 +380,7 @@ h1, h2, h3 { line-height: 1.25; font-weight: 600; letter-spacing: -.02em; }
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--radius); box-shadow: var(--shadow-sm);
 }
+.stat__icon { font-size: 16px; line-height: 1; margin-bottom: 3px; }
 .stat__value {
   font-size: 21px; font-weight: 650; letter-spacing: -.02em;
   font-variant-numeric: tabular-nums; line-height: 1.2;
@@ -382,6 +397,10 @@ h1, h2, h3 { line-height: 1.25; font-weight: 600; letter-spacing: -.02em; }
 }
 .panel__head h2 { font-size: 15px; }
 .panel__hint { font-size: 12.5px; color: var(--faint); margin-top: 2px; }
+
+/* Heading emoji. Baseline-aligned rather than centred so it sits on the
+   cap-height of the words next to it instead of floating above them. */
+.head__icon { font-size: 14px; margin-right: 7px; }
 
 /* ── Calendar ───────────────────────────────────────────────────── */
 .cal__nav { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; }
@@ -426,11 +445,7 @@ h1, h2, h3 { line-height: 1.25; font-weight: 600; letter-spacing: -.02em; }
   transition: border-color .12s ease;
 }
 .entry:hover { border-color: var(--border); }
-.entry__hit {
-  flex: 0 0 auto; width: 7px; height: 7px; border-radius: 50%;
-  background: var(--border-strong);
-}
-.entry[data-hit="true"] .entry__hit { background: var(--accent); }
+.entry__badge { flex: 0 0 auto; font-size: 17px; line-height: 1; }
 .entry__main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
 .entry__dur { font-size: 14.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .entry__when {
@@ -513,6 +528,7 @@ h1, h2, h3 { line-height: 1.25; font-weight: 600; letter-spacing: -.02em; }
   background: var(--surface-2);
 }
 .note strong { color: var(--muted); }
+.note__icon { font-size: 13px; margin-right: 5px; }
 
 .footer {
   max-width: var(--maxw); margin: 0 auto;

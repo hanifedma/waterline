@@ -44,6 +44,16 @@ Type is San Francisco — Apple's system typeface — reached through `-apple-sy
 Windows it falls back to Segoe UI, on Android to Roboto. Nothing is downloaded, so there is
 no font request on any connection.
 
+The colour in the interface comes from emoji rather than from illustration: 🔥 🏆 ✅ ⏳ on the
+stats, 📅 📋 🔬 on the headings, 🏆 or 💧 on every logged fast, and one emoji per metabolic
+stage. They're the system colour font, so they cost nothing to download and they carry
+meaning instead of decorating. The app icon, favicon and social card are all flat accent
+green on ink — regenerate them from `icons/icon-source.svg` and `favicon.svg`.
+
+Switching theme cross-fades every colour over 1.5 s rather than snapping, which is why
+`.theming` exists: it applies the long transition only during a deliberate toggle, so
+ordinary hover stays instant.
+
 ### The ring is eased on purpose
 
 Real progress is linear and, early on, invisible: twenty minutes into a 16-hour fast is 2% —

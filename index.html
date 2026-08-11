@@ -109,13 +109,13 @@
 
     <div class="topbar-actions">
       <button class="lang-btn" id="langBtn" type="button" data-i18n-aria="a11y.lang">
-        <svg class="lang-glyph" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.4 2.4 3.7 5.6 3.7 9S14.4 18.6 12 21c-2.4-2.4-3.7-5.6-3.7-9S9.6 5.4 12 3Z"/></svg>
+        <span class="glyph" aria-hidden="true">🌐</span>
         <span id="langLabel">EN</span>
       </button>
 
-      <button class="icon-btn" id="themeBtn" type="button" data-i18n-aria="a11y.theme">
-        <svg viewBox="0 0 24 24" class="icon-sun" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.6M12 19.4V22M4.2 4.2l1.9 1.9M17.9 17.9l1.9 1.9M2 12h2.6M19.4 12H22M4.2 19.8l1.9-1.9M17.9 6.1l1.9-1.9"/></svg>
-        <svg viewBox="0 0 24 24" class="icon-moon" aria-hidden="true"><path d="M20 14.2A8.2 8.2 0 0 1 9.8 4a8.4 8.4 0 1 0 10.2 10.2Z"/></svg>
+      <button class="icon-btn icon-btn--glyph" id="themeBtn" type="button" data-i18n-aria="a11y.theme">
+        <span class="glyph icon-sun" aria-hidden="true">☀️</span>
+        <span class="glyph icon-moon" aria-hidden="true">🌙</span>
       </button>
 
       <button class="sync-btn" id="signInBtn" type="button">
@@ -193,18 +193,22 @@
   <!-- ── Stats ─────────────────────────────────────────────────────── -->
   <section class="stats" data-i18n-aria="a11y.stats" aria-label="Your statistics">
     <article class="stat">
+      <span class="stat__icon" aria-hidden="true">🔥</span>
       <span class="stat__value" id="statStreak">0</span>
       <span class="stat__key" data-i18n="stats.streak">Day streak</span>
     </article>
     <article class="stat">
+      <span class="stat__icon" aria-hidden="true">🏆</span>
       <span class="stat__value" id="statLongest">0h</span>
       <span class="stat__key" data-i18n="stats.longest">Longest</span>
     </article>
     <article class="stat">
+      <span class="stat__icon" aria-hidden="true">✅</span>
       <span class="stat__value" id="statTotal">0</span>
       <span class="stat__key" data-i18n="stats.total">Completed</span>
     </article>
     <article class="stat">
+      <span class="stat__icon" aria-hidden="true">⏳</span>
       <span class="stat__value" id="statHours">0h</span>
       <span class="stat__key" data-i18n="stats.hours">Total time</span>
     </article>
@@ -214,7 +218,9 @@
   <section class="card panel" aria-labelledby="calHeading">
     <div class="panel__head">
       <div>
-        <h2 id="calHeading" data-i18n="cal.heading">Calendar</h2>
+        <!-- The emoji sits outside [data-i18n]: applyStatic overwrites that
+             element's textContent, which would eat any sibling markup. -->
+        <h2 id="calHeading"><span class="head__icon" aria-hidden="true">📅</span><span data-i18n="cal.heading">Calendar</span></h2>
         <p class="panel__hint" id="calHint" data-i18n="cal.emptyHint">No fasts logged yet</p>
       </div>
       <div class="cal__nav">
@@ -236,7 +242,7 @@
   <section class="card panel" aria-labelledby="historyHeading">
     <div class="panel__head">
       <div>
-        <h2 id="historyHeading" data-i18n="history.heading">Your fasts</h2>
+        <h2 id="historyHeading"><span class="head__icon" aria-hidden="true">📋</span><span data-i18n="history.heading">Your fasts</span></h2>
         <p class="panel__hint" id="historyHint" data-i18n="history.emptyHint">Nothing logged yet</p>
       </div>
     </div>
@@ -247,7 +253,7 @@
   <details class="card fold">
     <summary class="fold__head">
       <span>
-        <h2 data-i18n="stages.heading">What happens inside you</h2>
+        <h2><span class="head__icon" aria-hidden="true">🔬</span><span data-i18n="stages.heading">What happens inside you</span></h2>
         <p class="panel__hint" data-i18n="stages.subhead">The metabolic timeline of a water fast</p>
       </span>
       <svg class="fold__chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5 12 15.5 18 9.5"/></svg>
@@ -257,6 +263,7 @@
 
   <!-- ── Safety ────────────────────────────────────────────────────── -->
   <p class="note">
+    <span class="note__icon" aria-hidden="true">⚠️</span>
     <strong data-i18n="disclaimer.title">Health note.</strong>
     <span data-i18n="disclaimer.body">Waterline is an informational tool, not medical advice. Extended water fasting
     can be dangerous if you are pregnant or breastfeeding, underweight, diabetic, on medication, or have a history
@@ -298,7 +305,7 @@
 <!-- ── Modal: end-of-fast summary ───────────────────────────────────── -->
 <dialog class="modal" id="doneModal">
   <div class="modal__body modal__body--center">
-    <span class="done__mark" aria-hidden="true">💧</span>
+    <span class="done__mark" id="doneMark" aria-hidden="true">💧</span>
     <h2 id="doneTitle">Fast complete</h2>
     <p class="done__time" id="doneTime">—</p>
     <p class="modal__hint" id="doneMsg">—</p>

@@ -34,8 +34,8 @@ const el = {
   endInput: $("endInput"), endField: $("endField"), editTitle: $("editTitle"),
   editHint: $("editHint"), editError: $("editError"), cancelEditBtn: $("cancelEditBtn"),
   startField: $("startField"), saveEditBtn: $("saveEditBtn"),
-  doneModal: $("doneModal"), doneTitle: $("doneTitle"), doneTime: $("doneTime"),
-  doneMsg: $("doneMsg"), doneCloseBtn: $("doneCloseBtn")
+  doneModal: $("doneModal"), doneMark: $("doneMark"), doneTitle: $("doneTitle"),
+  doneTime: $("doneTime"), doneMsg: $("doneMsg"), doneCloseBtn: $("doneCloseBtn")
 };
 
 /** Must match r on .ring__fill in the stylesheet. */
@@ -406,7 +406,7 @@ function paintHistory(fasts) {
     row.className = "entry";
     row.dataset.hit = String(hit);
     row.innerHTML = `
-      <span class="entry__hit" aria-hidden="true"></span>
+      <span class="entry__badge" aria-hidden="true">${hit ? "🏆" : "💧"}</span>
       <div class="entry__main">
         <span class="entry__dur"></span>
         <span class="entry__when"></span>
@@ -572,7 +572,9 @@ const parseField = (input) => new Date(input.value).getTime();
 function celebrate(record) {
   const duration = record.end - record.start;
   const hours = duration / 3.6e6;
-  el.doneTitle.textContent = hours >= record.goalHours ? t("done.goalReached") : t("done.fastLogged");
+  const hit = hours >= record.goalHours;
+  el.doneMark.textContent = hit ? "🏆" : "💧";
+  el.doneTitle.textContent = hit ? t("done.goalReached") : t("done.fastLogged");
   el.doneTime.textContent = formatDuration(duration);
   el.doneMsg.textContent = localizedCompletion(hours, record.goalHours, completionMessage);
   el.doneModal.showModal();
@@ -725,9 +727,10 @@ function wireTheme() {
     store.theme = next;
     root.dataset.theme = next;
 
+    // Must outlast the 1.5s fade in the stylesheet, or colours snap mid-way.
     document.body.classList.add("theming");
     clearTimeout(themingTimer);
-    themingTimer = setTimeout(() => document.body.classList.remove("theming"), 600);
+    themingTimer = setTimeout(() => document.body.classList.remove("theming"), 1600);
   });
 }
 
