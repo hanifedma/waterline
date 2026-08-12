@@ -18,6 +18,12 @@
  */
 export const firebaseConfig = {
   apiKey: "AIzaSyDnGyplH_iENKAshzou2NXf8wag9NyshWY",
+  // The one value here a user ever sees. Google's account chooser says
+  // "continue to <authDomain>", so the default puts a project id in front of
+  // someone at the moment they are deciding whether to trust you. Pointing it
+  // at a domain you own fixes that — but only after that domain actually
+  // serves /__/auth/, so change this line last. README → "Make the sign-in
+  // dialog say your name".
   authDomain: "waterline-af54d.firebaseapp.com",
   projectId: "waterline-af54d",
   storageBucket: "waterline-af54d.firebasestorage.app",

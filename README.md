@@ -108,7 +108,7 @@ knob; set it to `1` for a linear ring.
 
 ## Built to run anywhere
 
-The first screen is 128 KB of HTML, CSS and JavaScript — **38 KB over the wire** once your
+The first screen is 130 KB of HTML, CSS and JavaScript — **39 KB over the wire** once your
 server gzips it — and it downloads **no fonts, no frameworks and no images** to render.
 (A third of the source is Korean translations and comments, both of which compress away.)
 
@@ -163,6 +163,53 @@ guest are moved into your account automatically.
 
 > The values in `js/config.js` are **not secrets** — they identify your project, they don't grant
 > access to it. Access is decided entirely by `firestore.rules`. They are safe to commit publicly.
+
+### Make the sign-in dialog say your name
+
+Out of the box Google's account chooser reads **"Choose an account to continue to
+waterline-af54d.firebaseapp.com"** — a raw project id, shown at the one moment someone is
+deciding whether to trust you with their Google account. Google prints the *domain* rather
+than your app's name on purpose: it will not display an unverified app's name, because an
+unverified app could call itself anything. So that sentence has two halves, and each has its
+own fix.
+
+**The domain half is yours, and takes effect the moment you deploy.** Google shows whichever
+domain serves the sign-in handoff, so point it at one you own:
+
+1. **Firebase console → Hosting → Get started → Add custom domain →** `auth.hanifedma.com`.
+   Any subdomain works; it does not have to be where the app lives.
+2. Add the DNS records it gives you. This only creates a subdomain — the apex record keeps
+   pointing at GitHub Pages and the site itself is untouched.
+3. Deploy something to that Hosting site, even a one-line redirect. Firebase serves
+   `/__/auth/` for the project automatically, but a custom domain won't go live until the
+   site has had one deploy.
+4. **Google Cloud console → APIs & Services → Credentials →** open the OAuth client called
+   *Web client (auto created by Google Service)* → **Authorized redirect URIs** → add
+   `https://auth.hanifedma.com/__/auth/handler`.
+5. **Firebase → Authentication → Settings → Authorized domains →** add `auth.hanifedma.com`.
+6. Only now, change one line in [`js/config.js`](js/config.js):
+   `authDomain: "auth.hanifedma.com"`.
+
+Step 6 before the domain answers and sign-in is broken until it does, which is why it is last.
+
+**The name half is free, instant to set, and Google decides when to show it.** In the
+**Google Cloud console → Google Auth Platform → Branding** (the page that used to be called
+*OAuth consent screen*), set **App name** to `Waterline` with a support email, your home page
+and a privacy policy URL. It is the same field as **Firebase console → Project settings →
+General → Public-facing name**; either door reaches it.
+
+Google's [own documentation](https://support.google.com/cloud/answer/15549049) is blunt about
+the catch: *"the app name will be displayed on the OAuth consent screen only if your app has
+been verified."* So set it, sign in again, and look. If a domain is still showing, that is the
+unverified fallback, and the way past it is **Branding → Publish app** and submitting for
+verification — which for Waterline's scopes (`email`, `profile`, `openid`, every one of them
+non-sensitive) is a branding review rather than a security assessment: it wants a domain
+verified in Search Console and a privacy policy hosted on it. Sign-in keeps working normally
+while that sits in the queue.
+
+The Android app signs in through this same OAuth client, so the name fix lands on both at
+once. The domain fix doesn't reach it — Credential Manager never loads `authDomain` — and on
+a phone the name is the only lever there is.
 
 ## Deploy to GitHub Pages
 
