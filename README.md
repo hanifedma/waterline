@@ -192,6 +192,12 @@ cached CSS and JS until that string changes, so a stale version is the usual rea
 | Reads | direct | `onSnapshot` listeners — push, not poll |
 | Offline | always | Firestore persistent cache, writes replay on reconnect |
 
+Both reads are validated on the way in, exactly as `localStorage` is: `firestore.rules`
+rejects a malformed fast, but it does not police the Firebase console, and one record with no
+`end` would turn every statistic into `NaN`. Nothing is painted until the *user* document has
+answered, either — it is the one carrying the running fast, and repainting before it lands
+flashes the Begin button at someone who is eleven hours in.
+
 A running fast is one field on your user document, your settings are another, and each
 finished fast is its own document. Because every read is a live listener, changing anything on
 one device repaints the others immediately — flip **Hide the clock** on your laptop and your
@@ -223,7 +229,7 @@ js/app.js             rendering, timer loop, streak calendar, milestone celebrat
                       the settings sheet and the hide-the-clock view
 sw.js                 offline shell cache — bump VERSION on every deploy
 firestore.rules       owner-only access — publish this
-test.html             open it in a browser; 98 assertions, no dependencies
+test.html             open it in a browser; 105 assertions, no dependencies
 ```
 
 ## Health note

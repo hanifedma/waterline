@@ -2,7 +2,7 @@
 <meta name="robots" content="noindex">
 <pre id="out">running…</pre>
 <script type="module">
-import { store, computeStats, dayIndex, fastedDays, isValidFast, sanitizeSettings } from "./js/store.js";
+import { store, computeStats, dayIndex, fastedDays, isValidFast, isValidActive, sanitizeSettings } from "./js/store.js";
 import { stageAt, completionMessage } from "./js/stages.js";
 
 const lines = [];
@@ -259,6 +259,27 @@ await store.cancelFast();
 store._enterLocal();   // the same re-read path a sign-out takes
 eq("hideTimes survives a reload", store.state.settings.hideTimes, true);
 eq("...alongside the goal", store.state.settings.goalHours, 18);
+
+// ── the cloud path must be as suspicious as the local one ─────────
+// Both listeners hand their documents to the same gates. These are those
+// gates, exercised with the shapes a hand-edited console entry can produce —
+// firestore.rules governs the client SDK, not somebody typing in the console.
+eq("valid active accepted", isValidActive({ start: Date.now(), goalHours: 16 }), true);
+eq("string start rejected", isValidActive({ start: "nonsense", goalHours: 16 }), false);
+eq("missing goal rejected", isValidActive({ start: Date.now() }), false);
+eq("zero goal rejected", isValidActive({ start: Date.now(), goalHours: 0 }), false);
+eq("null active rejected", isValidActive(null), false);
+
+// The shape the fasts listener filters and sorts.
+const cloudDocs = [
+  { id: "old", start: 300, end: 400, goalHours: 16 },
+  { id: "newest", start: 900, end: 1000, goalHours: 16 },
+  { id: "noEnd", start: 500, goalHours: 16 },
+  { id: "backwards", start: 800, end: 700, goalHours: 16 }
+];
+const kept = cloudDocs.filter(isValidFast).sort((a, b) => b.start - a.start);
+eq("malformed cloud fasts are dropped", kept.map((f) => f.id), ["newest", "old"]);
+eq("...and what is left is newest first", kept[0].start > kept[1].start, true);
 
 localStorage.removeItem("waterline:data:v1");
 document.getElementById("out").textContent =

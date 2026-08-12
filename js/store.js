@@ -34,7 +34,9 @@ const isNum = (v) => typeof v === "number" && Number.isFinite(v);
 export const isValidFast = (f) =>
   Boolean(f) && isNum(f.start) && isNum(f.end) && isNum(f.goalHours) && f.end > f.start;
 
-const isValidActive = (a) => Boolean(a) && isNum(a.start) && isNum(a.goalHours) && a.goalHours > 0;
+/** A running fast worth trusting. Applied to localStorage and to Firestore alike. */
+export const isValidActive = (a) =>
+  Boolean(a) && isNum(a.start) && isNum(a.goalHours) && a.goalHours > 0;
 
 /**
  * Settings reach us from three directions — localStorage, a Firestore
@@ -220,31 +222,66 @@ class Store extends EventTarget {
 
   _listen(uid) {
     const { fsMod, db } = this.fb;
-    const { doc, collection, onSnapshot, query, orderBy } = fsMod;
+    const { doc, collection, onSnapshot } = fsMod;
 
     const userRef = doc(db, "users", uid);
-    const fastsRef = query(collection(db, "users", uid, "fasts"), orderBy("start", "desc"));
+
+    /*
+     * Deliberately unordered. A Firestore orderBy silently DROPS documents
+     * that lack the field it sorts on, so one fast written without `start` —
+     * which firestore.rules forbids, but a hand-edited console entry does not
+     * — would simply vanish from your history with no error anywhere. Sorting
+     * happens below, where a missing value is just a value.
+     */
+    const fastsRef = collection(db, "users", uid, "fasts");
 
     const noteSource = (snap) => {
       if (!snap.metadata.fromCache) this._sawServer = true;
       this._refreshStatus(snap.metadata.fromCache);
     };
 
+    /*
+     * Nothing is painted until the user document has answered once.
+     *
+     * The running fast and your settings live on that document; the fasts
+     * collection knows nothing about either. These are two independent
+     * listeners with no ordering guarantee, so if the collection answers first
+     * an ungated repaint says "no fast is running" and flashes the Begin
+     * button at someone who is eleven hours in. The flag is set on an errored
+     * snapshot too, so a document that can never answer degrades to showing
+     * the history rather than nothing at all.
+     */
+    let sawUser = false;
+    const emit = () => { if (sawUser) this._emit(); };
+
     this._unsubs.push(
       onSnapshot(userRef, { includeMetadataChanges: true }, (snap) => {
         const data = snap.data() ?? {};
-        this.state.activeFast = data.activeFast ?? null;
+        // Same gate the local store uses. A running fast with a missing or
+        // non-numeric start prints "NaN:NaN:NaN" on the ring and never ends.
+        this.state.activeFast = isValidActive(data.activeFast) ? data.activeFast : null;
         this.state.settings = sanitizeSettings(data.settings);
+        sawUser = true;
         noteSource(snap);
-        this._emit();
-      }, (err) => console.warn("[waterline] user listener:", err))
+        emit();
+      }, (err) => {
+        console.warn("[waterline] user listener:", err);
+        sawUser = true;
+        emit();
+      })
     );
 
     this._unsubs.push(
       onSnapshot(fastsRef, { includeMetadataChanges: true }, (snap) => {
-        this.state.fasts = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        // Validated on the way in, exactly as the local store is: the rules
+        // reject a malformed fast, but they do not police the Firebase console,
+        // and one record with no `end` would turn every statistic into NaN.
+        this.state.fasts = snap.docs
+          .map((d) => ({ id: d.id, ...d.data() }))
+          .filter(isValidFast)
+          .sort((a, b) => b.start - a.start);
         noteSource(snap);
-        this._emit();
+        emit();
       }, (err) => console.warn("[waterline] fasts listener:", err))
     );
   }
