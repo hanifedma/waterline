@@ -44,6 +44,13 @@ const DICT = {
     "nav.signIn": "Sign in",
     "nav.signOut": "Sign out",
 
+    "signin.heading": "Sign in",
+    "signin.hint": "Your fasts follow you to every device you sign in on, and keep working offline.",
+    "signin.wait": "Loading Google…",
+    "signin.google": "Continue with Google",
+    "signin.other": "Continue another way",
+    "signin.cancel": "Not now",
+
     "ring.ready": "Ready when you are",
     "ring.readyMeta": "{goal}h goal",
     "ring.left": "{time} left",
@@ -174,6 +181,13 @@ const DICT = {
 
     "nav.signIn": "로그인",
     "nav.signOut": "로그아웃",
+
+    "signin.heading": "로그인",
+    "signin.hint": "로그인한 모든 기기에서 기록이 이어지고, 오프라인에서도 그대로 작동합니다.",
+    "signin.wait": "구글 불러오는 중…",
+    "signin.google": "Google 계정으로 계속하기",
+    "signin.other": "다른 방법으로 계속하기",
+    "signin.cancel": "나중에",
 
     "ring.ready": "준비되면 시작하세요",
     "ring.readyMeta": "목표 {goal}시간",

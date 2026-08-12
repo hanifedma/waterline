@@ -311,6 +311,34 @@
   </form>
 </dialog>
 
+<!-- ── Modal: sign in ───────────────────────────────────────────────────
+     Google's own button is rendered into #googleBtnHolder at open time — it
+     cannot be written here, because Google draws it itself and refuses to be
+     restyled. Everything around it is ours.
+
+     The second route below is never hidden. Its failures (an origin that was
+     never authorised, most often) happen inside Google's popup and are never
+     reported back to this page, so a dialog that offered only the button could
+     fail with nothing on screen to try next. -->
+<dialog class="modal" id="signInModal" aria-labelledby="signInTitle">
+  <div class="modal__body modal__body--center">
+    <h2 id="signInTitle">
+      <span class="head__icon" aria-hidden="true">💧</span><span data-i18n="signin.heading">Sign in</span>
+    </h2>
+    <p class="modal__hint" data-i18n="signin.hint">Your fasts follow you to every device you sign in
+      on, and keep working offline.</p>
+
+    <div class="gbtn" id="googleBtnHolder"></div>
+
+    <p class="modal__hint modal__hint--quiet" id="signInWait" data-i18n="signin.wait">Loading Google…</p>
+
+    <div class="timer__links">
+      <button class="text-btn" id="signInFallbackBtn" type="button" data-i18n="signin.other">Continue another way</button>
+      <button class="text-btn" id="signInCloseBtn" type="button" data-i18n="signin.cancel">Not now</button>
+    </div>
+  </div>
+</dialog>
+
 <!-- ── Modal: settings ──────────────────────────────────────────────── -->
 <dialog class="modal" id="settingsModal" aria-labelledby="settingsTitle">
   <div class="modal__body">

@@ -4,6 +4,7 @@
 <script type="module">
 import { store, computeStats, dayIndex, fastedDays, isValidFast, isValidActive, sanitizeSettings } from "./js/store.js";
 import { stageAt, completionMessage } from "./js/stages.js";
+import { isClientId, hasGoogleClientId } from "./js/config.js";
 
 const lines = [];
 let pass = 0, fail = 0;
@@ -280,6 +281,17 @@ const cloudDocs = [
 const kept = cloudDocs.filter(isValidFast).sort((a, b) => b.start - a.start);
 eq("malformed cloud fasts are dropped", kept.map((f) => f.id), ["newest", "old"]);
 eq("...and what is left is newest first", kept[0].start > kept[1].start, true);
+
+// ── which sign-in route runs ──────────────────────────────────────
+// A bad client id fails inside Google's popup, where nothing can report the
+// reason back to this page. So the check happens here instead, before the
+// dialog is ever opened, and a "no" quietly means the fallback route.
+eq("real client id accepted", isClientId("522318543600-abc.apps.googleusercontent.com"), true);
+eq("configured id is a real one", hasGoogleClientId, true);
+eq("blank rejected", isClientId(""), false);
+eq("placeholder rejected", isClientId("YOUR_GOOGLE_CLIENT_ID"), false);
+eq("project number rejected", isClientId("522318543600"), false);
+eq("non-string rejected", isClientId(undefined), false);
 
 localStorage.removeItem("waterline:data:v1");
 document.getElementById("out").textContent =

@@ -2,6 +2,7 @@
  * Waterline — UI controller.
  */
 import { store, computeStats, dayIndex, fastedDays } from "./store.js";
+import { googleClientId, hasGoogleClientId } from "./config.js";
 import { STAGES, stageAt, QUOTES, completionMessage } from "./stages.js";
 import {
   t, getLang, setLang, applyStatic,
@@ -37,7 +38,10 @@ const el = {
   doneModal: $("doneModal"), doneMark: $("doneMark"), doneTitle: $("doneTitle"),
   doneTime: $("doneTime"), doneMsg: $("doneMsg"), doneCloseBtn: $("doneCloseBtn"),
   settingsBtn: $("settingsBtn"), settingsModal: $("settingsModal"),
-  settingsCloseBtn: $("settingsCloseBtn"), hideTimesToggle: $("hideTimesToggle")
+  settingsCloseBtn: $("settingsCloseBtn"), hideTimesToggle: $("hideTimesToggle"),
+  signInModal: $("signInModal"), googleBtnHolder: $("googleBtnHolder"),
+  signInWait: $("signInWait"), signInFallbackBtn: $("signInFallbackBtn"),
+  signInCloseBtn: $("signInCloseBtn")
 };
 
 /** Must match r on .ring__fill in the stylesheet. */
@@ -929,21 +933,166 @@ function wireLang() {
   });
 }
 
+/* ── Google sign-in ───────────────────────────────────────────────────
+ * Two routes to the same Firebase session, and which one runs decides what
+ * Google's prompt calls us.
+ *
+ *   1. Google's own button, drawn on this page. The browser never leaves the
+ *      site, so Google names *the site*. Google hands back an ID token and the
+ *      store trades it for a session. Needs googleClientId, a secure context,
+ *      and this origin listed on the client id.
+ *   2. Firebase's popup, which bounces through authDomain and back — so Google
+ *      names that Firebase address instead. The fallback, and what runs with no
+ *      client id set.
+ *
+ * Route 1 is the same exchange the Android app makes: Google issues a token,
+ * Firebase verifies it. Neither platform redirects anywhere.
+ */
+const GSI_SRC = "https://accounts.google.com/gsi/client";
+let gsiPromise = null;
+let gsiInitialised = false;
+
+const gsiReady = () => Boolean(window.google?.accounts?.id);
+
+/** The in-page button needs a client id and a secure context; https or localhost. */
+const canUseGoogleButton = () =>
+  hasGoogleClientId && store.canSignIn && window.isSecureContext;
+
+function loadGsi() {
+  if (gsiReady()) return Promise.resolve(true);
+  if (gsiPromise) return gsiPromise;
+
+  // Fetched only when someone actually opens the dialog, so opening the app
+  // never waits on Google's CDN — and a signed-out visitor who never signs in
+  // never downloads it at all.
+  gsiPromise = new Promise((resolve) => {
+    const script = document.createElement("script");
+    script.src = GSI_SRC;
+    script.async = true;
+    script.defer = true;
+    script.onload = () => resolve(gsiReady());
+    script.onerror = () => resolve(false);   // offline, or an extension ate it
+    document.head.appendChild(script);
+  });
+  return gsiPromise;
+}
+
+function renderGoogleButton() {
+  if (!gsiInitialised) {
+    window.google.accounts.id.initialize({
+      client_id: googleClientId,
+      callback: onGoogleCredential,
+      // No One Tap and no auto-select: signing in is a decision someone came
+      // here to make, not something to spring on them mid-fast.
+      auto_select: false,
+      cancel_on_tap_outside: true
+      // No nonce. Google would put one in the token, but Firebase exposes no
+      // way to check it, so generating one would be a ceremony nobody audits.
+      // What Firebase does verify — signature, issuer, audience, expiry — it
+      // verifies on its own servers.
+    });
+    gsiInitialised = true;
+  }
+
+  // Re-rendered on every open, because theme and language can both have
+  // changed since the last one and Google bakes them into the button.
+  window.google.accounts.id.renderButton(el.googleBtnHolder, {
+    type: "standard",
+    theme: root.dataset.theme === "dark" ? "filled_black" : "outline",
+    size: "large",
+    text: "continue_with",
+    shape: "rectangular",
+    logo_alignment: "left",
+    locale: getLang(),
+    width: Math.round(Math.min(400, Math.max(200, el.googleBtnHolder.clientWidth || 320)))
+  });
+}
+
+/**
+ * The second route is never hidden, only demoted. Beside Google's button it
+ * reads as an alternative; when that button can't be drawn — script blocked,
+ * offline, an origin Google won't accept — it is the only way in and has to
+ * say so. The data-i18n key moves with the label, so switching language later
+ * doesn't restore the wrong one.
+ */
+function setFallbackRole(role) {
+  const key = role === "primary" ? "signin.google" : "signin.other";
+  el.signInFallbackBtn.dataset.i18n = key;
+  el.signInFallbackBtn.textContent = t(key);
+}
+
+async function onGoogleCredential(response) {
+  const idToken = response?.credential;
+  if (!idToken) return;
+  try {
+    await store.signInWithGoogleIdToken(idToken);
+    if (el.signInModal.open) el.signInModal.close();
+  } catch (err) {
+    console.error(err);
+    toast(
+      err.message === "sdk-unavailable" ? t("toast.offlineSignin") : t("toast.signinFailed"),
+      { icon: "⚠️", duration: 7000 }
+    );
+  }
+}
+
+/** Route 2. Also what the "Continue another way" button runs. */
+async function handoffSignIn() {
+  try {
+    await store.signIn();
+  } catch (err) {
+    console.error(err);
+    toast(
+      err.message === "sdk-unavailable" ? t("toast.offlineSignin") : t("toast.signinFailed"),
+      { icon: "⚠️", duration: 7000 }
+    );
+  }
+}
+
+async function openSignIn() {
+  el.googleBtnHolder.replaceChildren();
+  el.signInWait.hidden = false;
+  setFallbackRole("secondary");
+  el.signInModal.showModal();
+
+  const loaded = await loadGsi();
+  // Closed while we were fetching — rendering into a hidden dialog would leave
+  // a stale button waiting for the next open.
+  if (!el.signInModal.open) return;
+  el.signInWait.hidden = true;
+
+  if (!loaded) {
+    setFallbackRole("primary");
+    return;
+  }
+  try {
+    renderGoogleButton();
+  } catch (err) {
+    console.warn(err);
+    setFallbackRole("primary");
+  }
+}
+
 function wireAuth() {
   el.signInBtn.addEventListener("click", async () => {
     if (!store.canSignIn) {
       toast(t("toast.needKeys"), { icon: "🔑", duration: 7000 });
       return;
     }
-    try {
-      await store.signIn();
-    } catch (err) {
-      console.error(err);
-      toast(
-        err.message === "sdk-unavailable" ? t("toast.offlineSignin") : t("toast.signinFailed"),
-        { icon: "⚠️", duration: 7000 }
-      );
+    if (!canUseGoogleButton()) {
+      await handoffSignIn();                 // nothing to put in the dialog
+      return;
     }
+    await openSignIn();
+  });
+
+  el.signInFallbackBtn.addEventListener("click", async () => {
+    el.signInModal.close();
+    await handoffSignIn();
+  });
+  el.signInCloseBtn.addEventListener("click", () => el.signInModal.close());
+  el.signInModal.addEventListener("click", (event) => {
+    if (event.target === el.signInModal) el.signInModal.close();
   });
 
   el.avatarBtn.addEventListener("click", () => {
@@ -963,11 +1112,17 @@ function wireAuth() {
     el.userMenu.hidden = true;
     el.avatarBtn.setAttribute("aria-expanded", "false");
     await store.signOut();
+    // Without this Google keeps offering the account that just left, which
+    // reads as a sign-out that didn't work.
+    if (gsiReady()) window.google.accounts.id.disableAutoSelect();
     toast(t("toast.signedOut"), { icon: "👋" });
   });
 
   store.addEventListener("auth", ({ detail: user }) => {
     currentUser = user;
+    // Covers the fallback route too, which lands here from a redirect with no
+    // callback of its own to close anything.
+    if (user && el.signInModal.open) el.signInModal.close();
     el.signInBtn.hidden = Boolean(user);
     el.avatarMenu.hidden = !user;
     if (user) {

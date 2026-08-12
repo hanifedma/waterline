@@ -592,6 +592,16 @@ h1, h2, h3 { line-height: 1.25; font-weight: 600; letter-spacing: -.02em; }
 .modal__hint { font-size: 13px; color: var(--muted); line-height: 1.55; margin-top: -6px; }
 .modal__body--center .modal__hint { margin-top: 0; }
 .modal__error { font-size: 13px; color: var(--danger); }
+.modal__hint--quiet { font-size: 12px; opacity: .75; }
+
+/* Google draws its own button inside here and will not be restyled, so this
+   only gives it somewhere to sit: full width up to its own 400px ceiling, and
+   a minimum height so the dialog does not jump when it arrives. */
+.gbtn {
+  width: 100%; max-width: 400px; min-height: 44px;
+  display: flex; justify-content: center; align-items: center;
+}
+.gbtn:empty { min-height: 0; }
 
 .done__mark { font-size: 34px; line-height: 1; }
 .done__time {

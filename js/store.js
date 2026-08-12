@@ -150,6 +150,33 @@ class Store extends EventTarget {
 
   /* -- auth ------------------------------------------------------ */
 
+  /**
+   * Finish a sign-in that Google already completed on this page.
+   *
+   * The in-page Google button hands back an ID token — a JWT signed by Google,
+   * addressed to our client id. Firebase re-verifies the signature, the issuer
+   * and the audience on its own servers before it will mint a session, so what
+   * crosses this boundary is a proof rather than a claim, and a token forged in
+   * the console is refused there rather than here.
+   *
+   * This is the same exchange the Android app makes with the token Credential
+   * Manager gives it — one shape, two platforms, no browser redirect on either.
+   */
+  async signInWithGoogleIdToken(idToken) {
+    if (!isConfigured) throw new Error("unconfigured");
+    if (!this.fb) throw new Error("sdk-unavailable");
+    const { authMod, auth } = this.fb;
+    const credential = authMod.GoogleAuthProvider.credential(idToken);
+    await authMod.signInWithCredential(auth, credential);
+  }
+
+  /**
+   * The fallback route: hand the whole flow to Firebase, which bounces through
+   * `authDomain` and back. Works everywhere, and is the only thing that works
+   * when the client id is missing, the origin is unauthorised, or Google's
+   * script never loads — but the round trip is exactly why Google's prompt then
+   * names a Firebase address instead of this site.
+   */
   async signIn() {
     if (!isConfigured) throw new Error("unconfigured");
     if (!this.fb) throw new Error("sdk-unavailable"); // configured, but the SDK never loaded

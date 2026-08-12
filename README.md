@@ -108,7 +108,7 @@ knob; set it to `1` for a linear ring.
 
 ## Built to run anywhere
 
-The first screen is 130 KB of HTML, CSS and JavaScript — **39 KB over the wire** once your
+The first screen is 140 KB of HTML, CSS and JavaScript — **42 KB over the wire** once your
 server gzips it — and it downloads **no fonts, no frameworks and no images** to render.
 (A third of the source is Korean translations and comments, both of which compress away.)
 
@@ -157,6 +157,11 @@ Free forever on Firebase's Spark plan for personal use.
 6. Paste them into [`js/config.js`](js/config.js).
 7. **Authentication → Settings → Authorized domains →** add `localhost` and the domain you
    deploy to, e.g. `yourname.github.io`.
+8. **Google Cloud console → APIs & Services → Credentials →** open *Web client (auto created
+   by Google Service)*. Copy its **client id** into `googleClientId` in
+   [`js/config.js`](js/config.js), and add your origins under **Authorized JavaScript
+   origins** — see [below](#why-the-dialog-names-this-site) for why this step is the one
+   that decides what Google's dialog calls you.
 
 Reload. The footer flips from `Local mode` to `Synced as …`, and any fasts you recorded as a
 guest are moved into your account automatically.
@@ -164,52 +169,59 @@ guest are moved into your account automatically.
 > The values in `js/config.js` are **not secrets** — they identify your project, they don't grant
 > access to it. Access is decided entirely by `firestore.rules`. They are safe to commit publicly.
 
-### Make the sign-in dialog say your name
+### Why the dialog names this site
 
-Out of the box Google's account chooser reads **"Choose an account to continue to
-waterline-af54d.firebaseapp.com"** — a raw project id, shown at the one moment someone is
-deciding whether to trust you with their Google account. Google prints the *domain* rather
-than your app's name on purpose: it will not display an unverified app's name, because an
-unverified app could call itself anything. So that sentence has two halves, and each has its
-own fix.
+Ask Firebase to sign someone in the usual way — `signInWithPopup` — and Google's
+account chooser reads **"Choose an account to continue to
+waterline-af54d.firebaseapp.com"**: a raw project id, shown at the one moment someone is
+deciding whether to trust you with their Google account.
 
-**The domain half is yours, and takes effect the moment you deploy.** Google shows whichever
-domain serves the sign-in handoff, so point it at one you own:
+That address is not decoration. Firebase's popup hands off to `authDomain`, so
+`firebaseapp.com` is the origin that receives the redirect, and Google names the origin it
+redirects to. It won't name your app instead, because an unverified app's name is just text
+someone typed into a console — display it unchecked and the consent screen becomes the best
+phishing surface on the internet.
 
-1. **Firebase console → Hosting → Get started → Add custom domain →** `auth.hanifedma.com`.
-   Any subdomain works; it does not have to be where the app lives.
-2. Add the DNS records it gives you. This only creates a subdomain — the apex record keeps
-   pointing at GitHub Pages and the site itself is untouched.
-3. Deploy something to that Hosting site, even a one-line redirect. Firebase serves
-   `/__/auth/` for the project automatically, but a custom domain won't go live until the
-   site has had one deploy.
-4. **Google Cloud console → APIs & Services → Credentials →** open the OAuth client called
-   *Web client (auto created by Google Service)* → **Authorized redirect URIs** → add
-   `https://auth.hanifedma.com/__/auth/handler`.
-5. **Firebase → Authentication → Settings → Authorized domains →** add `auth.hanifedma.com`.
-6. Only now, change one line in [`js/config.js`](js/config.js):
-   `authDomain: "auth.hanifedma.com"`.
+So Waterline doesn't redirect. **Google's own button is rendered on the page**, hands back an
+ID token, and [`store.js`](js/store.js) trades it for a Firebase session with
+`signInWithCredential`. The browser never leaves the site, so the site is what Google names.
+It is the same exchange the Android app makes with the token Credential Manager gives it —
+one shape on both platforms, a redirect on neither.
 
-Step 6 before the domain answers and sign-in is broken until it does, which is why it is last.
+**What you have to do once:** authorise the origins. **Google Cloud console → APIs &
+Services → Credentials →** open *Web client (auto created by Google Service)* →
+**Authorized JavaScript origins** → add the origin you serve from, with no path:
 
-**The name half is free, instant to set, and Google decides when to show it.** In the
-**Google Cloud console → Google Auth Platform → Branding** (the page that used to be called
-*OAuth consent screen*), set **App name** to `Waterline` with a support email, your home page
-and a privacy policy URL. It is the same field as **Firebase console → Project settings →
-General → Public-facing name**; either door reaches it.
+```
+https://hanifedma.com
+http://localhost:8000        ← only if you develop locally
+```
 
-Google's [own documentation](https://support.google.com/cloud/answer/15549049) is blunt about
-the catch: *"the app name will be displayed on the OAuth consent screen only if your app has
-been verified."* So set it, sign in again, and look. If a domain is still showing, that is the
-unverified fallback, and the way past it is **Branding → Publish app** and submitting for
-verification — which for Waterline's scopes (`email`, `profile`, `openid`, every one of them
-non-sensitive) is a branding review rather than a security assessment: it wants a domain
-verified in Search Console and a privacy policy hosted on it. Sign-in keeps working normally
-while that sits in the queue.
+Skip it and the button still draws, but clicking it fails inside Google's popup — where
+nothing can report a reason back to the page. That is why the dialog always offers a second
+route as well, and why that route is promoted to the only visible button whenever the first
+one can't be drawn: blocked script, no client id, an origin Google won't take. It runs the
+old redirect flow, which works everywhere and names `firebaseapp.com`, which is a poor
+greeting but a fine parachute.
 
-The Android app signs in through this same OAuth client, so the name fix lands on both at
-once. The domain fix doesn't reach it — Credential Manager never loads `authDomain` — and on
-a phone the name is the only lever there is.
+The client id lives in [`js/config.js`](js/config.js) beside the Firebase keys and is public
+in exactly the same way — it is *meant* to be read out of the page. All of its security is
+that it refuses to work from an origin you haven't listed above.
+
+Two things this does not fix:
+
+- **The button's own language is Google's to choose.** Waterline passes its current
+  language, and Google may still draw the button in the one it infers from the reader's
+  location. Everything around the button follows the header toggle.
+- **Android still shows the project id**, because there is no redirect there to move. The
+  phone's sheet renders the project's OAuth *brand*, so the only lever is the brand's
+  **App name** (Google Cloud console → Google Auth Platform → Branding, mirrored at Firebase
+  → Project settings → General → Public-facing name). Google
+  [displays that name only once the brand is verified](https://support.google.com/cloud/answer/15549049) —
+  set it, look, and submit for verification if a domain is still showing. Waterline's scopes
+  (`email`, `profile`, `openid`) are all non-sensitive, so that review is about branding
+  rather than a security assessment.
+
 
 ## Deploy to GitHub Pages
 
@@ -276,7 +288,7 @@ js/app.js             rendering, timer loop, streak calendar, milestone celebrat
                       the settings sheet and the hide-the-clock view
 sw.js                 offline shell cache — bump VERSION on every deploy
 firestore.rules       owner-only access — publish this
-test.html             open it in a browser; 105 assertions, no dependencies
+test.html             open it in a browser; 111 assertions, no dependencies
 ```
 
 ## Health note
