@@ -292,6 +292,9 @@ h1, h2, h3 { line-height: 1.25; font-weight: 600; letter-spacing: -.02em; }
 }
 .text-btn:hover { background: var(--surface-2); color: var(--text); }
 .text-btn--danger:hover { color: var(--danger); }
+/* The one link that changes what you can see, rather than what is recorded. */
+.text-btn--peek { color: var(--accent); }
+.text-btn--peek:hover { color: var(--accent); background: var(--accent-soft); }
 
 /* ── Timer card ─────────────────────────────────────────────────── */
 .timer {
@@ -370,7 +373,8 @@ h1, h2, h3 { line-height: 1.25; font-weight: 600; letter-spacing: -.02em; }
   margin-top: 16px;
 }
 .timer__started { font-size: 12.5px; color: var(--faint); text-align: center; }
-.timer__links { display: flex; gap: 4px; }
+/* Three links in Korean on a 320px phone is wider than the card. */
+.timer__links { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; }
 
 /* ── Stats ──────────────────────────────────────────────────────── */
 .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
@@ -564,7 +568,16 @@ h1, h2, h3 { line-height: 1.25; font-weight: 600; letter-spacing: -.02em; }
 .modal {
   border: none; padding: 0; background: none;
   color: var(--text);
+  /* A modal <dialog> is centred by the UA's `margin: auto` against
+     `inset: 0`. Our `* { margin: 0 }` reset is an author rule, so it beats the
+     UA sheet and every dialog sticks to the top-left corner. Put it back. */
+  margin: auto;
   max-width: min(400px, calc(100vw - 32px));
+  /* A landscape phone is barely 350px tall; without this the Done button ends
+     up below the fold with no way to reach it. */
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .modal::backdrop { background: rgba(0, 0, 0, .55); }
 
@@ -604,6 +617,60 @@ h1, h2, h3 { line-height: 1.25; font-weight: 600; letter-spacing: -.02em; }
 .modal__actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
 .modal__actions--center { justify-content: center; }
 
+/* ── Settings sheet ─────────────────────────────────────────────── */
+.settings__group {
+  font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+  color: var(--faint); margin-top: 2px;
+}
+.settings__note { font-size: 12px; line-height: 1.55; color: var(--faint); }
+
+.setting {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+/* One row = one setting. The whole row is the hit target, which on a phone is
+   the difference between a 28px switch and a 54px one. */
+.switch {
+  display: flex; align-items: center; gap: 14px;
+  padding: 13px 14px; cursor: pointer;
+}
+.switch__text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.switch__title { font-size: 14.5px; font-weight: 600; }
+.switch__hint { font-size: 12.5px; color: var(--faint); line-height: 1.5; }
+
+/* Off-screen rather than display:none — a hidden input is neither focusable
+   nor announced, and this one is the entire control. */
+.switch__input {
+  position: absolute; width: 1px; height: 1px;
+  margin: 0; padding: 0; opacity: 0; pointer-events: none;
+}
+
+.switch__track {
+  position: relative; flex: 0 0 auto;
+  width: 46px; height: 28px; border-radius: 999px;
+  background: var(--surface-3);
+  border: 1px solid var(--border-strong);
+  transition: background .16s ease, border-color .16s ease;
+}
+.switch__knob {
+  position: absolute; top: 3px; left: 3px;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--muted);
+  transition: transform .16s cubic-bezier(.32, .72, 0, 1), background .16s ease;
+}
+.switch__input:checked ~ .switch__track {
+  background: var(--accent); border-color: var(--accent);
+}
+.switch__input:checked ~ .switch__track .switch__knob {
+  background: var(--accent-contrast); transform: translateX(18px);
+}
+/* The focus ring belongs on the thing you can see, not on the 1px input. */
+.switch__input:focus-visible ~ .switch__track {
+  outline: 2px solid var(--accent); outline-offset: 2px;
+}
+
 /* ── Small screens ──────────────────────────────────────────────── */
 @media (max-width: 430px) {
   .topbar-inner { padding: 10px 14px; gap: 8px; }
@@ -617,6 +684,8 @@ h1, h2, h3 { line-height: 1.25; font-weight: 600; letter-spacing: -.02em; }
   .stats { grid-template-columns: repeat(2, 1fr); }
   .panel, .fold { padding: 16px 14px; }
   .stage { grid-template-columns: 40px 1fr; gap: 10px; padding: 9px 8px; }
+  .modal__body { padding: 20px 16px; }
+  .switch { gap: 10px; }
 }
 
 /* ── Reduced motion ─────────────────────────────────────────────── */

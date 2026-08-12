@@ -2,7 +2,7 @@
 <meta name="robots" content="noindex">
 <pre id="out">running…</pre>
 <script type="module">
-import { store, computeStats, dayIndex, fastedDays, isValidFast } from "./js/store.js";
+import { store, computeStats, dayIndex, fastedDays, isValidFast, sanitizeSettings } from "./js/store.js";
 import { stageAt, completionMessage } from "./js/stages.js";
 
 const lines = [];
@@ -86,7 +86,7 @@ eq("80% short", completionMessage(13, 16).includes("81%"), true);
 // ── local store round-trip ────────────────────────────────────────
 localStorage.removeItem("waterline:data:v1");
 const s = store;
-s.state = { activeFast: null, fasts: [], settings: { goalHours: 16 } };
+s.state = { activeFast: null, fasts: [], settings: { goalHours: 16, hideTimes: false } };
 
 await s.startFast(16);
 eq("startFast sets active", s.state.activeFast.goalHours, 16);
@@ -148,7 +148,7 @@ eq("cancelFast logs nothing", s.state.fasts.length, 0);
 eq("endFast with no fast returns null", await s.endFast(), null);
 
 // ── endFast(endAt) clamps a chosen end time ───────────────────────
-s.state = { activeFast: null, fasts: [], settings: { goalHours: 16 } };
+s.state = { activeFast: null, fasts: [], settings: { goalHours: 16, hideTimes: false } };
 await s.startFast(16);
 await s.setStart(Date.now() - 10*H);
 const chosen = Date.now() - 3*H;
@@ -177,7 +177,7 @@ await s.setStart(Date.now() - 2*H);
 const recNaN = await s.endFast(NaN);
 eq("endFast(NaN) falls back to now", Math.abs(recNaN.end - Date.now()) < 2000, true);
 
-s.state = { activeFast: null, fasts: [], settings: { goalHours: 16 } };
+s.state = { activeFast: null, fasts: [], settings: { goalHours: 16, hideTimes: false } };
 
 // ── corrupt localStorage must not poison the stats ────────────────
 eq("valid fast accepted", isValidFast({start: 1, end: 2, goalHours: 16}), true);
@@ -208,6 +208,57 @@ eq("nonsense goal falls back to default", store.state.settings.goalHours, 16);
 const st = computeStats(store.state.fasts);
 eq("stats are finite", Number.isFinite(st.hours) && Number.isFinite(st.longest), true);
 eq("streak is a number", Number.isFinite(st.streak), true);
+
+// ── settings: shape, defaults and cross-field safety ──────────────
+// sanitizeSettings is the single gate every settings document passes through
+// — localStorage, a Firestore snapshot, and the guest merge all use it.
+eq("settings default", sanitizeSettings(undefined), { goalHours: 16, hideTimes: false });
+eq("empty settings default", sanitizeSettings({}), { goalHours: 16, hideTimes: false });
+eq("hideTimes true survives", sanitizeSettings({ goalHours: 20, hideTimes: true }).hideTimes, true);
+eq("a document from before the flag existed reads false",
+   sanitizeSettings({ goalHours: 20 }).hideTimes, false);
+eq('the string "true" is not true', sanitizeSettings({ hideTimes: "true" }).hideTimes, false);
+eq("null hideTimes is false", sanitizeSettings({ hideTimes: null }).hideTimes, false);
+eq("a bad goal beside a good flag still defaults",
+   sanitizeSettings({ goalHours: -5, hideTimes: true }), { goalHours: 16, hideTimes: true });
+eq("unknown keys are dropped",
+   Object.keys(sanitizeSettings({ goalHours: 16, hideTimes: false, junk: 1 })).sort(),
+   ["goalHours", "hideTimes"]);
+
+localStorage.removeItem("waterline:data:v1");
+store._enterLocal();
+eq("hideTimes is off out of the box", store.state.settings.hideTimes, false);
+
+await store.setHideTimes(true);
+eq("setHideTimes turns it on", store.state.settings.hideTimes, true);
+eq("...and persists", JSON.parse(localStorage.getItem("waterline:data:v1")).settings.hideTimes, true);
+
+// Every settings write rewrites the whole map. In local mode _writeUser is an
+// Object.assign, so a partial patch would quietly erase the other field.
+await store.setGoal(24);
+eq("setGoal leaves hideTimes alone", store.state.settings.hideTimes, true);
+eq("...and sets the goal", store.state.settings.goalHours, 24);
+
+await store.startFast(18);
+eq("startFast leaves hideTimes alone", store.state.settings.hideTimes, true);
+eq("...while taking the new goal", store.state.settings.goalHours, 18);
+
+// Unlike the goal, this one is allowed to change mid-fast: it changes what the
+// card shows, never what is recorded.
+await store.setHideTimes(false);
+eq("setHideTimes works while a fast is running", store.state.settings.hideTimes, false);
+eq("...and does not touch the running fast", store.state.activeFast.goalHours, 18);
+await store.setHideTimes(true);
+eq("setHideTimes toggles back on mid-fast", store.state.settings.hideTimes, true);
+
+eq("a non-boolean argument is coerced, not stored",
+   (await store.setHideTimes("yes"), store.state.settings.hideTimes), false);
+
+await store.setHideTimes(true);
+await store.cancelFast();
+store._enterLocal();   // the same re-read path a sign-out takes
+eq("hideTimes survives a reload", store.state.settings.hideTimes, true);
+eq("...alongside the goal", store.state.settings.goalHours, 18);
 
 localStorage.removeItem("waterline:data:v1");
 document.getElementById("out").textContent =

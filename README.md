@@ -25,6 +25,7 @@ turns amber, and the fast is logged at its true length. Ending asks *when* you b
 (defaulting to now, never accepting a future time), and any logged fast's start and end can
 be corrected afterwards. A **streak calendar** chains your consecutive days together.
 
+- **Hide the clock.** One switch in Settings and a running fast shows nothing but the ring. See below.
 - **Real-time sync.** Start a fast on your laptop, watch it tick on your phone. No refresh, no button.
 - **Works signed out.** Everything runs from `localStorage`. Sign in later and your history moves with you.
 - **Works offline.** Installable PWA. Offline changes queue and flush when you reconnect.
@@ -32,6 +33,37 @@ be corrected afterwards. A **streak calendar** chains your consecutive days toge
 - **Dark and light.** Follows your system, remembers your choice.
 - **English and Korean.** One tap in the header swaps the interface; your own data — times,
   durations, dates — always stays in your device's own locale.
+
+## Hide the clock
+
+Watching a countdown is the surest way to make a fast feel long. **Settings (⚙) → Hide the
+clock** turns the timer card into a game: while a fast is running you get the ring, the
+metabolic stage you are in, and a percentage — and nothing that can be turned back into a
+time.
+
+| | Clock shown | Clock hidden |
+|---|---|---|
+| Ring face | `05:36:06` | `35%` |
+| Under it | `10h 24m left` | — (`Goal reached` once you pass it) |
+| Coach line | `2h 24m until Glycogen burning` | `Next up: Glycogen burning` |
+| Goal picker | `Goal · 16 hours`, greyed | put away |
+| Below the button | `Started Wed, Aug 12 03:32 PM · 16h goal at Thu, Aug 13 07:32 AM` | put away |
+| Milestone toast | *"Twelve hours. You're officially burning fat for fuel."* | *"Glycogen runs low and lipolysis takes over…"* |
+
+Four rules keep it honest:
+
+- **Only while a fast is running.** Idle, you still see and pick your goal — there is nothing
+  to hide yet, and a settings screen that appears to do nothing is a broken settings screen.
+- **Nothing about the fast changes.** It is recorded at its true length, the ring still turns
+  amber at the goal, and the end-of-fast sheet reveals the full duration. Hiding is a *view*.
+- **The percentage is the real one**, floored, and capped at 99% until the goal is genuinely
+  met — rounding would print `100%` a couple of minutes early and then keep counting.
+- **There is always a way out.** **Peek** under the button uncovers everything for eight
+  seconds, or puts it straight back; the stage timeline is left alone, because the story of
+  what your body is doing is the half worth keeping.
+
+The setting lives on your user document beside your goal, so it follows you to every device
+you are signed in on. Signed out it is saved to this browser, like everything else.
 
 ## The design
 
@@ -76,7 +108,7 @@ knob; set it to `1` for a linear ring.
 
 ## Built to run anywhere
 
-The first screen is 110 KB of HTML, CSS and JavaScript — **33 KB over the wire** once your
+The first screen is 128 KB of HTML, CSS and JavaScript — **38 KB over the wire** once your
 server gzips it — and it downloads **no fonts, no frameworks and no images** to render.
 (A third of the source is Korean translations and comments, both of which compress away.)
 
@@ -160,10 +192,21 @@ cached CSS and JS until that string changes, so a stale version is the usual rea
 | Reads | direct | `onSnapshot` listeners — push, not poll |
 | Offline | always | Firestore persistent cache, writes replay on reconnect |
 
-A running fast is one field on your user document; each finished fast is its own document.
-Because every read is a live listener, changing anything on one device repaints the others
-immediately. Signing in for the first time merges your guest history in, de-duplicating by
-start time, then clears the guest store.
+A running fast is one field on your user document, your settings are another, and each
+finished fast is its own document. Because every read is a live listener, changing anything on
+one device repaints the others immediately — flip **Hide the clock** on your laptop and your
+phone's ring covers itself while you watch. Signing in for the first time merges your guest
+history in, de-duplicating by start time, then clears the guest store.
+
+```
+users/{uid}
+  activeFast : { start, goalHours } | null
+  settings   : { goalHours, hideTimes }
+  fasts/{id} : { start, end, goalHours }
+```
+
+`settings` is a map on a document `firestore.rules` already lets its owner write, so adding a
+field to it needs no rules change and no deploy.
 
 ## Layout
 
@@ -176,10 +219,11 @@ js/config.js          ← your Firebase keys go here
 js/store.js           local + Firestore backends behind one interface
 js/stages.js          metabolic timeline, encouragement copy (English, canonical)
 js/i18n.js            interface translations (English + Korean) and the language switch
-js/app.js             rendering, timer loop, streak calendar, milestone celebrations
+js/app.js             rendering, timer loop, streak calendar, milestone celebrations,
+                      the settings sheet and the hide-the-clock view
 sw.js                 offline shell cache — bump VERSION on every deploy
 firestore.rules       owner-only access — publish this
-test.html             open it in a browser; 77 assertions, no dependencies
+test.html             open it in a browser; 98 assertions, no dependencies
 ```
 
 ## Health note

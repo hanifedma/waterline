@@ -35,6 +35,7 @@ const DICT = {
     "a11y.home": "Waterline home",
     "a11y.theme": "Toggle colour theme",
     "a11y.lang": "Change language",
+    "a11y.settings": "Settings",
     "a11y.ring": "Fasting progress",
     "a11y.stats": "Your statistics",
     "a11y.prevMonth": "Previous month",
@@ -47,6 +48,7 @@ const DICT = {
     "ring.readyMeta": "{goal}h goal",
     "ring.left": "{time} left",
     "ring.past": "{time} past your {goal}h goal",
+    "ring.goalMet": "Goal reached",
 
     "goal.label": "Goal",
     "goal.option": ({ h }) => `${h} hours`,
@@ -56,8 +58,11 @@ const DICT = {
     "btn.end": "End fast",
     "btn.editStart": "Edit start",
     "btn.discard": "Discard",
+    "btn.peek": "Peek",
+    "btn.hideAgain": "Hide again",
 
     "coach.until": "{time} until {stage}",
+    "coach.next": "Next up: {stage}",
     "coach.pastAll": "You are past every milestone on the map.",
 
     "stats.streak": "Day streak",
@@ -98,6 +103,15 @@ const DICT = {
     "modal.cancel": "Cancel",
     "done.close": "Nice",
 
+    "settings.heading": "Settings",
+    "settings.timerGroup": "Timer",
+    "settings.hideTimes": "Hide the clock",
+    "settings.hideTimesHint":
+      "While a fast is running, show only the ring — no elapsed clock, no countdown, no goal, no start or finish time. Every number comes back the moment you end it.",
+    "settings.syncNote":
+      "Saved to your account, so every device you sign in on agrees. Signed out, it is saved to this browser.",
+    "settings.done": "Done",
+
     "editor.activeTitle": "When did you actually start?",
     "editor.activeHint": "Forgot to hit begin? Set the real time your fast started.",
     "editor.endTitle": "When did you break your fast?",
@@ -127,6 +141,9 @@ const DICT = {
     "toast.discardConfirm": "Discard this fast without logging it?",
     "toast.discarded": "Fast discarded",
     "toast.goalReached": "{goal}h goal reached. Anything now is a bonus.",
+    "toast.goalReachedBlind": "Goal reached. Anything from here is a bonus.",
+    "toast.hideTimesOn": "Clock hidden. Just you and the ring.",
+    "toast.hideTimesOff": "Clock is back.",
     "toast.needKeys": "Add your Firebase keys in js/config.js to enable sync.",
     "toast.offlineSignin": "Can't reach Firebase. You're offline — local mode still works.",
     "toast.signinFailed": "Sign-in failed. Check your Firebase authorised domains.",
@@ -136,6 +153,7 @@ const DICT = {
 
     "notify.goalTitle": "Goal reached 🏆",
     "notify.goalBody": "You hit your {goal}-hour goal.",
+    "notify.goalBodyBlind": "You hit your goal.",
 
     "status.syncingAs": "Synced as {name}",
     "status.offline": "Offline — changes will sync when you're back",
@@ -148,6 +166,7 @@ const DICT = {
     "a11y.home": "Waterline 홈",
     "a11y.theme": "색상 테마 전환",
     "a11y.lang": "언어 변경",
+    "a11y.settings": "설정",
     "a11y.ring": "단식 진행률",
     "a11y.stats": "나의 통계",
     "a11y.prevMonth": "이전 달",
@@ -160,6 +179,7 @@ const DICT = {
     "ring.readyMeta": "목표 {goal}시간",
     "ring.left": "{time} 남음",
     "ring.past": "{goal}시간 목표에서 {time} 초과",
+    "ring.goalMet": "목표 달성",
 
     "goal.label": "목표",
     "goal.option": ({ h }) => `${h}시간`,
@@ -169,8 +189,11 @@ const DICT = {
     "btn.end": "단식 종료",
     "btn.editStart": "시작 시간 수정",
     "btn.discard": "취소",
+    "btn.peek": "잠깐 보기",
+    "btn.hideAgain": "다시 숨기기",
 
     "coach.until": "{stage}까지 {time} 남음",
+    "coach.next": "다음 단계: {stage}",
     "coach.pastAll": "지도의 모든 단계를 지나왔습니다.",
 
     "stats.streak": "연속 일수",
@@ -211,6 +234,15 @@ const DICT = {
     "modal.cancel": "취소",
     "done.close": "좋아요",
 
+    "settings.heading": "설정",
+    "settings.timerGroup": "타이머",
+    "settings.hideTimes": "시계 숨기기",
+    "settings.hideTimesHint":
+      "단식이 진행되는 동안 링만 보여줍니다 — 경과 시간도, 남은 시간도, 목표도, 시작·종료 시각도 없습니다. 단식을 끝내면 모든 숫자가 다시 나타납니다.",
+    "settings.syncNote":
+      "계정에 저장되어 로그인한 모든 기기에서 동일하게 적용됩니다. 로그아웃 상태에서는 이 브라우저에만 저장됩니다.",
+    "settings.done": "완료",
+
     "editor.activeTitle": "실제로 언제 시작했나요?",
     "editor.activeHint": "시작 버튼을 깜빡했나요? 단식이 시작된 실제 시간을 입력하세요.",
     "editor.endTitle": "언제 단식을 중단했나요?",
@@ -240,6 +272,9 @@ const DICT = {
     "toast.discardConfirm": "이 단식을 기록하지 않고 취소할까요?",
     "toast.discarded": "단식을 취소했습니다",
     "toast.goalReached": "{goal}시간 목표 달성. 지금부터는 전부 보너스예요.",
+    "toast.goalReachedBlind": "목표 달성. 지금부터는 전부 보너스예요.",
+    "toast.hideTimesOn": "시계를 숨겼어요. 이제 링만 보입니다.",
+    "toast.hideTimesOff": "시계를 다시 표시합니다.",
     "toast.needKeys": "동기화를 사용하려면 js/config.js에 Firebase 키를 추가하세요.",
     "toast.offlineSignin": "Firebase에 연결할 수 없습니다. 오프라인 상태예요 — 로컬 모드는 계속 작동합니다.",
     "toast.signinFailed": "로그인에 실패했습니다. Firebase 승인된 도메인을 확인하세요.",
@@ -248,6 +283,7 @@ const DICT = {
 
     "notify.goalTitle": "목표 달성 🏆",
     "notify.goalBody": "{goal}시간 목표를 달성했어요.",
+    "notify.goalBodyBlind": "목표를 달성했어요.",
 
     "status.syncingAs": "{name}(으)로 동기화 중",
     "status.offline": "오프라인 — 연결되면 동기화됩니다",

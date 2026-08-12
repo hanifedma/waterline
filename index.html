@@ -85,6 +85,7 @@
   "featureList": [
     "Real-time cross-device sync",
     "Water fasting timer with metabolic stage timeline",
+    "Hide-the-clock focus mode",
     "Streaks and personal records",
     "Works offline",
     "Google sign-in"
@@ -116,6 +117,11 @@
       <button class="icon-btn icon-btn--glyph" id="themeBtn" type="button" data-i18n-aria="a11y.theme">
         <span class="glyph icon-sun" aria-hidden="true">☀️</span>
         <span class="glyph icon-moon" aria-hidden="true">🌙</span>
+      </button>
+
+      <button class="icon-btn icon-btn--glyph" id="settingsBtn" type="button"
+              aria-haspopup="dialog" data-i18n-aria="a11y.settings">
+        <span class="glyph" aria-hidden="true">⚙️</span>
       </button>
 
       <button class="sync-btn" id="signInBtn" type="button">
@@ -184,6 +190,9 @@
     <div class="timer__foot" id="timerFoot" hidden>
       <p class="timer__started" id="startedAt"></p>
       <div class="timer__links">
+        <!-- Focus mode only: uncovers the real numbers for a few seconds.
+             Its label is written by app.js, so it carries no [data-i18n]. -->
+        <button class="text-btn text-btn--peek" id="peekBtn" type="button" hidden>Peek</button>
         <button class="text-btn" id="editStartBtn" type="button" data-i18n="btn.editStart">Edit start</button>
         <button class="text-btn text-btn--danger" id="cancelBtn" type="button" data-i18n="btn.discard">Discard</button>
       </div>
@@ -300,6 +309,44 @@
       <button class="btn btn-primary" type="submit" id="saveEditBtn">Save</button>
     </div>
   </form>
+</dialog>
+
+<!-- ── Modal: settings ──────────────────────────────────────────────── -->
+<dialog class="modal" id="settingsModal" aria-labelledby="settingsTitle">
+  <div class="modal__body">
+    <h2 id="settingsTitle">
+      <span class="head__icon" aria-hidden="true">⚙️</span><span data-i18n="settings.heading">Settings</span>
+    </h2>
+
+    <h3 class="settings__group" data-i18n="settings.timerGroup">Timer</h3>
+
+    <!-- The checkbox sits between the text and the track so the stylesheet can
+         reach both with a sibling selector; it is off-screen, never display:none,
+         so it stays focusable and announced. -->
+    <div class="setting">
+      <!-- The whole row is the label, so the whole row is tappable. Naming the
+           input from the title alone keeps the announcement short: without
+           this, a screen reader reads the entire paragraph as the control's
+           name and again as its description. -->
+      <label class="switch">
+        <span class="switch__text">
+          <span class="switch__title" id="hideTimesTitle" data-i18n="settings.hideTimes">Hide the clock</span>
+          <span class="switch__hint" id="hideTimesHint" data-i18n="settings.hideTimesHint">While a fast is
+            running, show only the ring — no elapsed clock, no countdown, no goal, no start or finish time.</span>
+        </span>
+        <input class="switch__input" type="checkbox" id="hideTimesToggle"
+               aria-labelledby="hideTimesTitle" aria-describedby="hideTimesHint">
+        <span class="switch__track" aria-hidden="true"><span class="switch__knob"></span></span>
+      </label>
+    </div>
+
+    <p class="settings__note" data-i18n="settings.syncNote">Saved to your account, so every device you
+      sign in on agrees. Signed out, it is saved to this browser.</p>
+
+    <div class="modal__actions">
+      <button class="btn btn-primary" type="button" id="settingsCloseBtn" data-i18n="settings.done">Done</button>
+    </div>
+  </div>
 </dialog>
 
 <!-- ── Modal: end-of-fast summary ───────────────────────────────────── -->

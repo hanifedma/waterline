@@ -23,7 +23,7 @@ const CDN = `https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}`;
 const DEFAULT_STATE = () => ({
   activeFast: null, // { start: epochMs, goalHours: number }
   fasts: [],        // [{ id, start, end, goalHours }]
-  settings: { goalHours: 16 }
+  settings: { goalHours: 16, hideTimes: false }
 });
 
 /* ── Guest (localStorage) persistence ─────────────────────────────── */
@@ -35,6 +35,26 @@ export const isValidFast = (f) =>
   Boolean(f) && isNum(f.start) && isNum(f.end) && isNum(f.goalHours) && f.end > f.start;
 
 const isValidActive = (a) => Boolean(a) && isNum(a.start) && isNum(a.goalHours) && a.goalHours > 0;
+
+/**
+ * Settings reach us from three directions — localStorage, a Firestore
+ * snapshot, and the guest merge — and any of them can be stale, hand-edited,
+ * or written by a version that had never heard of a field. One gate, so a bad
+ * value can never reach the UI, and a missing one always lands on its default.
+ *
+ * Unknown keys are dropped rather than carried, which keeps the shape of a
+ * settings document identical everywhere it is written.
+ */
+export function sanitizeSettings(raw) {
+  const base = DEFAULT_STATE().settings;
+  const s = raw ?? {};
+  return {
+    goalHours: isNum(s.goalHours) && s.goalHours > 0 ? s.goalHours : base.goalHours,
+    // Anything that isn't a literal true is off: an old document with no field
+    // at all, a string "false", a stray null.
+    hideTimes: s.hideTimes === true
+  };
+}
 
 /*
  * localStorage is user-writable and survives across versions. One malformed
@@ -51,12 +71,7 @@ function readLocal() {
       fasts: Array.isArray(parsed.fasts)
         ? parsed.fasts.filter((f) => isValidFast(f) && typeof f.id === "string")
         : [],
-      settings: {
-        ...DEFAULT_STATE().settings,
-        ...(isNum(parsed.settings?.goalHours) && parsed.settings.goalHours > 0
-          ? { goalHours: parsed.settings.goalHours }
-          : {})
-      }
+      settings: sanitizeSettings(parsed.settings)
     };
   } catch {
     return DEFAULT_STATE();
@@ -219,7 +234,7 @@ class Store extends EventTarget {
       onSnapshot(userRef, { includeMetadataChanges: true }, (snap) => {
         const data = snap.data() ?? {};
         this.state.activeFast = data.activeFast ?? null;
-        this.state.settings = { ...DEFAULT_STATE().settings, ...(data.settings ?? {}) };
+        this.state.settings = sanitizeSettings(data.settings);
         noteSource(snap);
         this._emit();
       }, (err) => console.warn("[waterline] user listener:", err))
@@ -305,16 +320,41 @@ class Store extends EventTarget {
     }
   }
 
+  /**
+   * Merges a patch into settings, always writing the whole map.
+   *
+   * Local mode's _writeUser() is an Object.assign, which *replaces*
+   * `settings` rather than merging into it — so a patch of `{ hideTimes }`
+   * alone would silently erase `goalHours` on this device. Every settings
+   * write goes through here so that can't happen from any caller.
+   */
+  async _writeSettings(patch) {
+    await this._writeUser({ settings: { ...this.state.settings, ...patch } });
+  }
+
   async startFast(goalHours) {
     if (this.state.activeFast) return;
     const activeFast = { start: Date.now(), goalHours };
-    await this._writeUser({ activeFast, settings: { goalHours } });
+    await this._writeUser({
+      activeFast,
+      settings: { ...this.state.settings, goalHours }
+    });
   }
 
   /** Sets the goal for your *next* fast. A fast already in progress keeps the goal it started with. */
   async setGoal(goalHours) {
     if (this.state.activeFast) return;
-    await this._writeUser({ settings: { goalHours } });
+    await this._writeSettings({ goalHours });
+  }
+
+  /**
+   * Focus mode. When on, a *running* fast shows only the ring — no elapsed
+   * clock, no countdown, no goal, no start or finish time. Unlike the goal it
+   * can be flipped mid-fast, because it changes nothing about the fast itself:
+   * it is purely how much the timer card is willing to tell you.
+   */
+  async setHideTimes(hideTimes) {
+    await this._writeSettings({ hideTimes: hideTimes === true });
   }
 
   async setStart(startMs) {

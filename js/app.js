@@ -18,7 +18,7 @@ const el = {
   goalRow: $("goalRow"), goalSelect: $("goalSelect"),
   startBtn: $("startBtn"), endBtn: $("endBtn"),
   timerFoot: $("timerFoot"), startedAt: $("startedAt"),
-  editStartBtn: $("editStartBtn"), cancelBtn: $("cancelBtn"),
+  editStartBtn: $("editStartBtn"), cancelBtn: $("cancelBtn"), peekBtn: $("peekBtn"),
   statStreak: $("statStreak"), statLongest: $("statLongest"),
   statTotal: $("statTotal"), statHours: $("statHours"),
   stages: $("stages"), history: $("history"), historyHint: $("historyHint"),
@@ -35,7 +35,9 @@ const el = {
   editHint: $("editHint"), editError: $("editError"), cancelEditBtn: $("cancelEditBtn"),
   startField: $("startField"), saveEditBtn: $("saveEditBtn"),
   doneModal: $("doneModal"), doneMark: $("doneMark"), doneTitle: $("doneTitle"),
-  doneTime: $("doneTime"), doneMsg: $("doneMsg"), doneCloseBtn: $("doneCloseBtn")
+  doneTime: $("doneTime"), doneMsg: $("doneMsg"), doneCloseBtn: $("doneCloseBtn"),
+  settingsBtn: $("settingsBtn"), settingsModal: $("settingsModal"),
+  settingsCloseBtn: $("settingsCloseBtn"), hideTimesToggle: $("hideTimesToggle")
 };
 
 /** Must match r on .ring__fill in the stylesheet. */
@@ -79,6 +81,46 @@ let goalCelebrated = false;
 const unprime = () => { primed = false; };
 
 let stageNodes = [];
+
+/* ── Focus mode ───────────────────────────────────────────────────── */
+
+/**
+ * "Hide the clock" (settings.hideTimes, synced with the rest of your
+ * settings). While a fast is *running* the timer card gives up every number
+ * that could be turned back into a time — the elapsed clock, the countdown,
+ * the goal, the start and the projected finish — and shows the ring, the
+ * stage you are in, and a percentage. Nothing about the fast itself changes;
+ * it is recorded at its true length and the end-of-fast sheet reveals it all.
+ *
+ * Deliberately scoped to a running fast. Idle, you still need to see and pick
+ * a goal, and history is a record rather than a temptation to clock-watch.
+ */
+const PEEK_MS = 8000;
+
+/** Epoch ms until which a peek uncovers the real numbers; 0 when not peeking. */
+let peekUntil = 0;
+const peeking = () => peekUntil > 0 && Date.now() < peekUntil;
+
+/** Focus mode is armed (on, and a fast is running) — whether or not peeking. */
+const focusArmed = () =>
+  store.state.settings.hideTimes === true && Boolean(store.state.activeFast);
+
+/** Focus mode is actually covering the numbers right now. */
+const hidingTimes = () => focusArmed() && !peeking();
+
+/**
+ * Drops a peek whose time is up and repaints. Returns true if it did, so the
+ * one-second loop can skip the tick it would otherwise do — render() ticks.
+ *
+ * This lives outside tick() on purpose: tick() is called *by* render(), so a
+ * repaint from inside it would recurse.
+ */
+function expirePeek() {
+  if (peekUntil === 0 || Date.now() < peekUntil) return false;
+  peekUntil = 0;
+  render();
+  return true;
+}
 
 /* ── Formatting ───────────────────────────────────────────────────── */
 
@@ -191,11 +233,13 @@ function tick() {
   if (!activeFast) {
     setText(el.ringLabel, t("ring.ready"));
     setText(el.ringTime, "00:00:00");
+    el.ringMeta.hidden = false;
     setText(el.ringMeta, t("ring.readyMeta", { goal: settings.goalHours }));
     setText(el.coach, idleQuote);
     paintRing(0, false);
     markStages(-1);
     unprime();
+    peekUntil = 0;   // nothing left to peek at
     return;
   }
 
@@ -205,16 +249,36 @@ function tick() {
   const reachedGoal = goalMs > 0 && elapsed >= goalMs;
   const { index, current, next } = stageAt(elapsed / 3.6e6);
   const stage = localizedStage(current);
+  const hide = hidingTimes();
 
   setText(el.ringLabel, stage.title);
-  setText(el.ringTime, formatElapsed(elapsed));
-  setText(el.ringMeta, reachedGoal
-    ? t("ring.past", { time: formatDuration(elapsed - goalMs), goal: activeFast.goalHours })
-    : t("ring.left", { time: formatCountdown(goalMs - elapsed) }));
 
-  setText(el.coach, next
-    ? t("coach.until", { time: formatCountdown(next.hour * 3.6e6 - elapsed), stage: localizedStage(next).title })
-    : t("coach.pastAll"));
+  if (hide) {
+    /*
+     * Floored and capped at 99 below the goal, so the face can only ever read
+     * 100% when the goal is genuinely met. Rounding would print 100% a couple
+     * of minutes early and then keep counting, which reads as a bug.
+     */
+    setText(el.ringTime, `${reachedGoal ? 100 : Math.min(99, Math.floor(progress * 100))}%`);
+
+    // The only line worth keeping is the one with no number in it.
+    el.ringMeta.hidden = !reachedGoal;
+    if (reachedGoal) setText(el.ringMeta, t("ring.goalMet"));
+
+    setText(el.coach, next
+      ? t("coach.next", { stage: localizedStage(next).title })
+      : t("coach.pastAll"));
+  } else {
+    setText(el.ringTime, formatElapsed(elapsed));
+    el.ringMeta.hidden = false;
+    setText(el.ringMeta, reachedGoal
+      ? t("ring.past", { time: formatDuration(elapsed - goalMs), goal: activeFast.goalHours })
+      : t("ring.left", { time: formatCountdown(goalMs - elapsed) }));
+
+    setText(el.coach, next
+      ? t("coach.until", { time: formatCountdown(next.hour * 3.6e6 - elapsed), stage: localizedStage(next).title })
+      : t("coach.pastAll"));
+  }
 
   paintRing(progress, reachedGoal);
   markStages(index);
@@ -226,16 +290,32 @@ function tick() {
     return;
   }
 
+  /*
+   * Celebrations are read from the armed setting rather than from `hide`, so
+   * a peek that happens to overlap a milestone doesn't change what is said.
+   * Several stage cheers name the hour out loud ("Twelve hours…", "Two days…");
+   * in focus mode the stage's own description says the same thing without a
+   * number in it.
+   */
+  const blind = focusArmed();
+
   if (index > lastStageIndex) {
-    toast(stage.cheer, { icon: stage.icon, win: true, duration: 8000 });
-    notify(`${stage.icon} ${stage.title}`, stage.cheer);
+    const body = blind ? stage.text : stage.cheer;
+    toast(body, { icon: stage.icon, win: true, duration: 8000 });
+    notify(`${stage.icon} ${stage.title}`, body);
     lastStageIndex = index;
   }
 
   if (reachedGoal && !goalCelebrated) {
     goalCelebrated = true;
-    toast(t("toast.goalReached", { goal: activeFast.goalHours }), { icon: "🏆", win: true, duration: 7000 });
-    notify(t("notify.goalTitle"), t("notify.goalBody", { goal: activeFast.goalHours }));
+    toast(
+      blind ? t("toast.goalReachedBlind") : t("toast.goalReached", { goal: activeFast.goalHours }),
+      { icon: "🏆", win: true, duration: 7000 }
+    );
+    notify(
+      t("notify.goalTitle"),
+      blind ? t("notify.goalBodyBlind") : t("notify.goalBody", { goal: activeFast.goalHours })
+    );
   }
 }
 
@@ -443,12 +523,20 @@ function paintControls() {
   const active = store.state.activeFast;
   const running = Boolean(active);
   const goal = active?.goalHours ?? store.state.settings.goalHours;
+  const hide = hidingTimes();
 
   el.startBtn.hidden = running;
   el.endBtn.hidden = !running;
   el.timerFoot.hidden = !running;
 
-  if (running) {
+  // The settings sheet can be opened mid-fast, and another device can flip
+  // this while you watch, so the switch is painted from state, not from clicks.
+  el.hideTimesToggle.checked = store.state.settings.hideTimes === true;
+
+  // "Started … · 16h goal at …" is three of the four numbers focus mode exists
+  // to hide, so the whole line goes; Edit start and Discard stay reachable.
+  el.startedAt.hidden = !running || hide;
+  if (running && !hide) {
     const { start, goalHours } = active;
     const goalAt = start + goalHours * 3.6e6;
     const sameDay = dayIndex(goalAt) === dayIndex(start);
@@ -458,6 +546,16 @@ function paintControls() {
       goalAt: `${sameDay ? "" : dateFmt.format(goalAt) + " "}${timeFmt.format(goalAt)}`
     });
   }
+
+  // Peek is offered whenever focus mode is armed — including *while* peeking,
+  // where it becomes the way back under cover.
+  const armed = focusArmed();
+  el.peekBtn.hidden = !armed;
+  if (armed) setText(el.peekBtn, hide ? t("btn.peek") : t("btn.hideAgain"));
+
+  // The picker reads "16 hours" out loud, so in focus mode it is put away
+  // rather than greyed. It is locked during a fast either way.
+  el.goalRow.hidden = hide;
 
   // A goal already in progress is fixed; the picker shows it, greyed.
   if (el.goalSelect.disabled !== running) {
@@ -664,6 +762,13 @@ function wireControls() {
 
   el.doneCloseBtn.addEventListener("click", () => el.doneModal.close());
 
+  // A toggle rather than a one-way reveal: having looked, you can put the
+  // cover straight back without waiting the peek out.
+  el.peekBtn.addEventListener("click", () => {
+    peekUntil = peeking() ? 0 : Date.now() + PEEK_MS;
+    render();
+  });
+
   el.editStartBtn.addEventListener("click", () => {
     if (store.state.activeFast) openEditor({ kind: "active" });
   });
@@ -715,6 +820,55 @@ function wireControls() {
       return;
     }
     applyEdit();                       // the dialog closes itself
+  });
+}
+
+/* ── Settings sheet ───────────────────────────────────────────────── */
+
+/** What the switch read when the sheet was opened; null while it is closed. */
+let settingsOpenedWith = null;
+
+function wireSettings() {
+  el.settingsBtn.addEventListener("click", () => {
+    // Whatever the last snapshot said, not whatever the checkbox was left at.
+    el.hideTimesToggle.checked = store.state.settings.hideTimes === true;
+    settingsOpenedWith = el.hideTimesToggle.checked;
+    el.settingsModal.showModal();
+  });
+
+  el.settingsCloseBtn.addEventListener("click", () => el.settingsModal.close());
+
+  /*
+   * Tapping the dimmed area closes the sheet, the way a sheet should behave on
+   * a phone. The backdrop is painted by the <dialog> itself, so a click that
+   * lands on it targets the dialog element rather than anything inside it.
+   */
+  el.settingsModal.addEventListener("click", (event) => {
+    if (event.target === el.settingsModal) el.settingsModal.close();
+  });
+
+  el.hideTimesToggle.addEventListener("change", () => {
+    peekUntil = 0;                 // a deliberate choice ends any peek in flight
+    store.setHideTimes(el.hideTimesToggle.checked);
+    render();                      // instant, even while the write is in flight
+  });
+
+  /*
+   * The confirmation waits for the sheet to close. A modal <dialog> lives in
+   * the top layer, above every z-index on the page, so a toast fired while the
+   * sheet is open is painted behind its own backdrop and never seen. `close`
+   * is also the one event all three ways out share — Done, Escape, backdrop.
+   *
+   * It matters most when no fast is running: the switch is the only thing that
+   * changed on screen, because there is nothing to hide yet.
+   */
+  el.settingsModal.addEventListener("close", () => {
+    const on = el.hideTimesToggle.checked;
+    if (settingsOpenedWith !== null && on !== settingsOpenedWith) {
+      toast(t(on ? "toast.hideTimesOn" : "toast.hideTimesOff"),
+        { icon: on ? "🙈" : "👀", duration: 3400 });
+    }
+    settingsOpenedWith = null;
   });
 }
 
@@ -849,6 +1003,7 @@ buildCalendar();
 wireTheme();
 wireLang();
 wireControls();
+wireSettings();
 wireAuth();
 updateBuildMode();
 
@@ -867,7 +1022,9 @@ requestAnimationFrame(() => requestAnimationFrame(() => {
 let shownDay = dayIndex(Date.now());
 setInterval(() => {
   if (document.hidden) return;
-  tick();
+  // expirePeek() repaints the whole card when a peek runs out; that includes
+  // the tick this second would have done.
+  if (!expirePeek()) tick();
   const today = dayIndex(Date.now());
   if (today !== shownDay) {
     shownDay = today;
@@ -875,7 +1032,13 @@ setInterval(() => {
     paintStats(store.state.fasts);
   }
 }, 1000);
-document.addEventListener("visibilitychange", () => { if (!document.hidden) tick(); });
+
+// A peek left running when the tab was hidden has almost certainly expired by
+// the time you come back, and nothing ticked while you were away.
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) return;
+  if (!expirePeek()) tick();
+});
 
 if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
   addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(() => {}));
