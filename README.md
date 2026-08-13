@@ -43,7 +43,7 @@ time.
 
 | | Clock shown | Clock hidden |
 |---|---|---|
-| Ring face | `05:36:06` | `35%` |
+| Ring face | `05:36:06` | `56%` |
 | Under it | `10h 24m left` | — (`Goal reached` once you pass it) |
 | Coach line | `2h 24m until Glycogen burning` | `Next up: Glycogen burning` |
 | Goal picker | `Goal · 16 hours`, greyed | put away |
@@ -56,8 +56,9 @@ Four rules keep it honest:
   to hide yet, and a settings screen that appears to do nothing is a broken settings screen.
 - **Nothing about the fast changes.** It is recorded at its true length, the ring still turns
   amber at the goal, and the end-of-fast sheet reveals the full duration. Hiding is a *view*.
-- **The percentage is the real one**, floored, and capped at 99% until the goal is genuinely
-  met — rounding would print `100%` a couple of minutes early and then keep counting.
+- **The percentage is how full the ring is** — the same eased number, floored, so the caption
+  in the middle of the ring can never disagree with the ring around it. It reaches `100%` only
+  when the goal is genuinely met.
 - **There is always a way out.** **Peek** under the button uncovers everything for eight
   seconds, or puts it straight back; the stage timeline is left alone, because the story of
   what your body is doing is the half worth keeping.
@@ -94,17 +95,19 @@ front-loads the fill and then slows as you approach the goal:
 
 | Elapsed | True progress | Ring shows |
 |---|---|---|
-| 20 min of 16 h | 2% | 12% |
+| 20 min of 16 h | 2% | 11% |
 | 1 h 36 m of 16 h | 10% | 28% |
-| 5 h 30 m of 16 h | 34% | 56% |
+| 5 h 30 m of 16 h | 34% | 55% |
 | 8 h of 16 h | 50% | 68% |
 | 14 h 24 m of 16 h | 90% | 94% |
 | 16 h of 16 h | 100% | 100% |
 
 It still starts empty and lands exactly on full at the goal, so it never disagrees with
-itself. **Nothing numeric is eased** — the clock, the time remaining, the logged duration,
-the streak and every statistic are the real values. `RING_CURVE` in `js/app.js` is the one
-knob; set it to `1` for a linear ring.
+itself. The right-hand column is also what the face reads when the clock is hidden: that
+percentage describes the ring, so it comes from the same curve. **Nothing that measures time
+is eased** — the clock, the time remaining, the logged duration, the streak, the end-of-fast
+sheet and every statistic are the real values. `RING_CURVE` in `js/app.js` is the one knob;
+set it to `1` for a linear ring, and the percentage follows it back to linear too.
 
 ## Built to run anywhere
 

@@ -57,12 +57,27 @@ const RING_C = 2 * Math.PI * RING_R;
  * 50% → 68%), then slows as you approach the goal. It still starts at empty
  * and lands exactly on full at the goal, so it never disagrees with itself.
  *
- * Nothing numeric is eased: the clock, the time remaining, the logged
- * duration and every statistic are the real values. Set this to 1 for a
- * linear ring.
+ * Set this to 1 for a linear ring.
  */
 const RING_CURVE = 0.55;
 const easeProgress = (p) => Math.pow(p, RING_CURVE);
+
+/**
+ * How full the ring is, as a whole percent — the number the face shows when
+ * the clock is hidden.
+ *
+ * It reads the *same* eased value the arc is drawn from, because a percentage
+ * printed in the middle of a ring is a caption for that ring, not a second
+ * opinion about it. Drawn from raw progress it would sit at 35% inside an arc
+ * plainly past halfway, and the one that looks wrong is always the number.
+ *
+ * Floored rather than rounded, so it can only ever claim a fill the arc has
+ * already reached.
+ *
+ * Nothing that measures *time* is eased: the clock, the countdown, the logged
+ * duration, the end-of-fast sheet and every statistic are the real values.
+ */
+const ringPercent = (progress) => Math.floor(easeProgress(progress) * 100);
 
 /** Goals offered in the picker, in hours. */
 const GOAL_CHOICES = [12, 13, 14, 16, 18, 20, 24, 36, 48, 72];
@@ -259,11 +274,13 @@ function tick() {
 
   if (hide) {
     /*
-     * Floored and capped at 99 below the goal, so the face can only ever read
-     * 100% when the goal is genuinely met. Rounding would print 100% a couple
-     * of minutes early and then keep counting, which reads as a bug.
+     * Capped at 99 below the goal, so the face can only ever read 100% when
+     * the goal is genuinely met. The ease already lands on exactly 1 there, so
+     * this is a guard against float drift rather than a correction — but a
+     * face that says 100% while the countdown keeps running reads as a bug,
+     * and it costs one comparison to make that impossible.
      */
-    setText(el.ringTime, `${reachedGoal ? 100 : Math.min(99, Math.floor(progress * 100))}%`);
+    setText(el.ringTime, `${reachedGoal ? 100 : Math.min(99, ringPercent(progress))}%`);
 
     // The only line worth keeping is the one with no number in it.
     el.ringMeta.hidden = !reachedGoal;
